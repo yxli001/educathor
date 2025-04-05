@@ -16,13 +16,18 @@ interface Message {
   timestamp: Date;
 }
 
+interface Hint {
+  id: string;
+  text: string;
+  isRevealed: boolean;
+}
+
 // Main Popup Component
 const Popup: React.FC = () => {
   // State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
     !REQUIRE_AUTH
   );
-  const [hasGeminiApiKey, setHasGeminiApiKey] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -35,7 +40,9 @@ const Popup: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [pageContent, setPageContent] = useState<string>("");
   const [screenshot, setScreenshot] = useState<string>("");
-  const [geminiApiKey, setGeminiApiKey] = useState<string>("");
+  const [highlightedText, setHighlightedText] = useState<string>("");
+  const [hints, setHints] = useState<Hint[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Check authentication status on mount
@@ -43,8 +50,8 @@ const Popup: React.FC = () => {
     if (REQUIRE_AUTH) {
       checkAuthStatus();
     }
-    checkGeminiApiKey();
     capturePageContent();
+    getHighlightedText();
   }, []);
 
   // Scroll to bottom of messages
@@ -56,12 +63,6 @@ const Popup: React.FC = () => {
   const checkAuthStatus = async () => {
     const authenticated = apiService.isAuthenticated();
     setIsAuthenticated(authenticated);
-  };
-
-  // Check if Gemini API key is set
-  const checkGeminiApiKey = async () => {
-    const hasKey = apiService.hasGeminiApiKey();
-    setHasGeminiApiKey(hasKey);
   };
 
   // Handle authentication
@@ -79,15 +80,6 @@ const Popup: React.FC = () => {
     };
 
     chrome.runtime.onMessage.addListener(authListener);
-  };
-
-  // Handle setting Gemini API key
-  const handleSetGeminiApiKey = () => {
-    if (geminiApiKey.trim()) {
-      apiService.setGeminiApiKey(geminiApiKey.trim());
-      setHasGeminiApiKey(true);
-      setGeminiApiKey("");
-    }
   };
 
   // Capture page content
@@ -121,6 +113,32 @@ const Popup: React.FC = () => {
     }
   };
 
+  // Get highlighted text from the page
+  const getHighlightedText = async () => {
+    try {
+      // Get the active tab
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
+      if (tab.id) {
+        // Execute content script to get highlighted text
+        const [{ result }] = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const selection = window.getSelection();
+            return selection ? selection.toString() : "";
+          },
+        });
+
+        setHighlightedText(result as string);
+      }
+    } catch (error) {
+      console.error("Error getting highlighted text:", error);
+    }
+  };
+
   // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -146,7 +164,8 @@ const Popup: React.FC = () => {
       // Send message to API
       const response = await apiService.sendChatMessage(
         userMessage.text,
-        pageContent
+        pageContent,
+        highlightedText
       );
 
       // Add bot response
@@ -159,18 +178,14 @@ const Popup: React.FC = () => {
 
       setMessages((prev) => [...prev, botMessage]);
 
-      // Add hints if available
+      // Store hints
       if (response.hints && response.hints.length > 0) {
-        const hintsMessage: Message = {
-          id: (Date.now() + 2).toString(),
-          text: `Hints:\n${response.hints
-            .map((hint, index) => `${index + 1}. ${hint}`)
-            .join("\n")}`,
-          sender: "bot",
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, hintsMessage]);
+        const newHints: Hint[] = response.hints.map((hint, index) => ({
+          id: `hint-${Date.now()}-${index}`,
+          text: hint,
+          isRevealed: false,
+        }));
+        setHints(newHints);
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -189,29 +204,24 @@ const Popup: React.FC = () => {
     }
   };
 
+  // Handle revealing a hint
+  const handleRevealHint = (hintId: string) => {
+    setHints((prev) =>
+      prev.map((hint) =>
+        hint.id === hintId ? { ...hint, isRevealed: true } : hint
+      )
+    );
+  };
+
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
-  };
-
-  // Handle Gemini API key input change
-  const handleGeminiApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setGeminiApiKey(e.target.value);
   };
 
   // Handle key press
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSendMessage();
-    }
-  };
-
-  // Handle Gemini API key key press
-  const handleGeminiApiKeyKeyPress = (
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (e.key === "Enter") {
-      handleSetGeminiApiKey();
     }
   };
 
@@ -224,27 +234,6 @@ const Popup: React.FC = () => {
           <button onClick={handleAuth} className="auth-button">
             Log in to EducaThor Hub
           </button>
-        </div>
-      ) : !hasGeminiApiKey ? (
-        <div className="auth-container">
-          <h2>Set Up Gemini API</h2>
-          <p>Please enter your Gemini API key to continue.</p>
-          <div className="api-key-container">
-            <input
-              type="password"
-              value={geminiApiKey}
-              onChange={handleGeminiApiKeyChange}
-              onKeyPress={handleGeminiApiKeyKeyPress}
-              placeholder="Enter your Gemini API key"
-              className="api-key-input"
-            />
-            <button onClick={handleSetGeminiApiKey} className="api-key-button">
-              Set API Key
-            </button>
-          </div>
-          <p className="api-key-help">
-            You can get a Gemini API key from the Google AI Studio.
-          </p>
         </div>
       ) : (
         <div className="chat-container">
@@ -265,6 +254,28 @@ const Popup: React.FC = () => {
                 </div>
               </div>
             ))}
+
+            {/* Hints section */}
+            {hints.length > 0 && (
+              <div className="hints-container">
+                <h3>Hints</h3>
+                {hints.map((hint) => (
+                  <div key={hint.id} className="hint-item">
+                    {hint.isRevealed ? (
+                      <div className="hint-text">{hint.text}</div>
+                    ) : (
+                      <button
+                        onClick={() => handleRevealHint(hint.id)}
+                        className="reveal-hint-button"
+                      >
+                        Reveal Hint
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
           <div className="input-container">
@@ -273,7 +284,7 @@ const Popup: React.FC = () => {
               value={inputValue}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Ask a question..."
+              placeholder="Ask a question about your homework..."
               disabled={isLoading}
             />
             <button

@@ -14,6 +14,9 @@ const API_ENDPOINTS = {
 // Set this to false to bypass authentication
 const REQUIRE_AUTH = false;
 
+// Hardcoded API key - in production, this should be protected with Node.js
+const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; // Replace with your actual API key
+
 // Types
 export interface AuthResponse {
   token: string;
@@ -48,7 +51,7 @@ export interface GeminiResponse {
 // API Service
 export class ApiService {
   private token: string | null = null;
-  private geminiApiKey: string | null = null;
+  private geminiApiKey: string = GEMINI_API_KEY;
 
   constructor() {
     // Load tokens from storage on initialization
@@ -58,14 +61,10 @@ export class ApiService {
   // Load authentication tokens from storage
   private async loadTokens(): Promise<void> {
     return new Promise((resolve) => {
-      chrome.storage.local.get(
-        ["tuzzai_auth_token", "gemini_api_key"],
-        (result) => {
-          this.token = result.tuzzai_auth_token || null;
-          this.geminiApiKey = result.gemini_api_key || null;
-          resolve();
-        }
-      );
+      chrome.storage.local.get(["tuzzai_auth_token"], (result) => {
+        this.token = result.tuzzai_auth_token || null;
+        resolve();
+      });
     });
   }
 
@@ -73,12 +72,6 @@ export class ApiService {
   public setToken(token: string): void {
     this.token = token;
     chrome.storage.local.set({ tuzzai_auth_token: token });
-  }
-
-  // Set Gemini API key
-  public setGeminiApiKey(apiKey: string): void {
-    this.geminiApiKey = apiKey;
-    chrome.storage.local.set({ gemini_api_key: apiKey });
   }
 
   // Clear authentication token
@@ -92,11 +85,6 @@ export class ApiService {
     return REQUIRE_AUTH ? !!this.token : true;
   }
 
-  // Check if Gemini API key is set
-  public hasGeminiApiKey(): boolean {
-    return !!this.geminiApiKey;
-  }
-
   // Get authentication URL
   public getAuthUrl(): string {
     return API_ENDPOINTS.AUTH;
@@ -107,10 +95,6 @@ export class ApiService {
     content: string,
     screenshot: string
   ): Promise<AnalysisResponse> {
-    if (!this.geminiApiKey) {
-      throw new Error("Gemini API key not set");
-    }
-
     try {
       // Prepare the prompt for Gemini
       const prompt = `
@@ -172,12 +156,9 @@ export class ApiService {
   // Send chat message using Gemini API
   public async sendChatMessage(
     message: string,
-    context: string
+    context: string,
+    highlightedText?: string
   ): Promise<ChatResponse> {
-    if (!this.geminiApiKey) {
-      throw new Error("Gemini API key not set");
-    }
-
     try {
       // Prepare the prompt for Gemini
       const prompt = `
@@ -185,9 +166,14 @@ export class ApiService {
         
         Context from the student's homework: ${context.substring(0, 2000)}
         
+        ${highlightedText ? `Highlighted text: ${highlightedText}` : ""}
+        
         Student's question: ${message}
         
-        Provide a helpful explanation and 2-3 hints that guide the student toward the answer without giving it directly.
+        IMPORTANT: DO NOT solve the problem or provide the answer directly. Instead, provide:
+        1. A helpful explanation of the concepts involved
+        2. 2-3 hints that guide the student toward the answer without giving it directly
+        
         Format your response as:
         EXPLANATION: [Your explanation here]
         HINTS:
