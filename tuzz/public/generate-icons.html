@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Generate Icons</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 20px;
+      }
+      canvas {
+        border: 1px solid #ccc;
+        margin: 10px;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 10px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Icon Generator</h1>
+    <p>
+      Click the button to generate placeholder icons for your Chrome extension.
+    </p>
+
+    <div>
+      <canvas id="icon16" width="16" height="16"></canvas>
+      <canvas id="icon48" width="48" height="48"></canvas>
+      <canvas id="icon128" width="128" height="128"></canvas>
+    </div>
+
+    <button id="generate">Generate Icons</button>
+    <button id="download">Download Icons</button>
+
+    <script>
+      document
+        .getElementById("generate")
+        .addEventListener("click", function () {
+          const sizes = [16, 48, 128];
+
+          sizes.forEach((size) => {
+            const canvas = document.getElementById(`icon${size}`);
+            const ctx = canvas.getContext("2d");
+
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+
+            // Draw background
+            ctx.fillStyle = "#4285F4"; // Google Blue
+            ctx.fillRect(0, 0, size, size);
+
+            // Draw text
+            ctx.fillStyle = "white";
+            ctx.font = `bold ${size * 0.5}px Arial`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("T", size / 2, size / 2);
+          });
+        });
+
+      document
+        .getElementById("download")
+        .addEventListener("click", function () {
+          const sizes = [16, 48, 128];
+
+          sizes.forEach((size) => {
+            const canvas = document.getElementById(`icon${size}`);
+            const link = document.createElement("a");
+            link.download = `icon${size}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+          });
+        });
+    </script>
+  </body>
+</html>

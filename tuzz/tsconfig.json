@@ -1,17 +1,17 @@
 {
-    "compilerOptions": {
-        "target": "ESNext",
-        "lib": ["DOM", "ESNext"],
-        "strict": true,
-        "module": "ESNext",
-        "moduleResolution": "Node",
-        "allowSyntheticDefaultImports": true,
-        "resolveJsonModule": true,
-        "isolatedModules": true,
-        "skipLibCheck": true,
-        "outDir": "dist",
-        "jsx": "react",
-        "types": ["chrome"]
-    },
-    "include": ["src"]
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["DOM", "ESNext"],
+    "strict": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "jsx": "react",
+    "types": ["chrome"]
+  },
+  "include": ["src"]
 }
