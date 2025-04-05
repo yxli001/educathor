@@ -1,48 +1,103 @@
 # TuzzAI Chrome Extension
 
-A Chrome Extension for TuzzAI in the EducaThor suite.
+TuzzAI is a Chrome extension that helps students understand homework questions without giving direct answers. It uses the Gemini API to analyze page content and provide helpful explanations and hints.
+
+## Features
+
+- **Page Analysis**: Automatically extracts and analyzes homework questions from web pages
+- **Interactive Chat**: Ask questions and get helpful explanations without direct answers
+- **Hint Generation**: Receive hints that guide you toward the solution
+- **Screenshot Capture**: Captures the current page for context
+- **Authentication**: Integrates with EducaThor Hub for user authentication
 
 ## Setup Instructions
 
-1. Install dependencies:
+### Prerequisites
+
+- Google Chrome browser
+- Node.js and npm installed
+- A Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+
+### Installation
+
+1. Clone the repository:
+
+   ```
+   git clone https://github.com/yourusername/tuzzai-extension.git
+   cd tuzzai-extension
+   ```
+
+2. Install dependencies:
 
    ```
    npm install
    ```
 
-2. Create icon files:
-
-   - Open `public/manual-icons.html` in your browser
-   - Follow the instructions to download the icon files
-   - Place the downloaded icons in the `public/icons` directory
-
 3. Build the extension:
+
    ```
    npm run build
    ```
 
-## Testing the Extension
+4. Load the extension in Chrome:
+   - Open Chrome and navigate to `chrome://extensions/`
+   - Enable "Developer mode" in the top right
+   - Click "Load unpacked" and select the `dist` folder from this project
 
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable "Developer mode" in the top-right corner
-3. Click "Load unpacked" and select the `dist` directory from this project
-4. The extension should now be installed and visible in your Chrome toolbar
+### Icon Generation
+
+If you need to generate icons for the extension:
+
+1. Open `public/manual-icons.html` in a browser
+2. Follow the instructions to generate and download the icons
+3. Place the downloaded icons in the `public/icons` directory
+
+## Usage
+
+1. Click the TuzzAI extension icon in your Chrome toolbar
+2. Log in to the EducaThor Hub when prompted
+3. Enter your Gemini API key when prompted
+4. Navigate to a page with homework questions
+5. Ask questions about the homework in the chat interface
+6. Receive helpful explanations and hints without direct answers
 
 ## Development
 
-To start development with hot-reloading:
+- Run the development server with watch mode:
 
-```
-npm run dev
-```
+  ```
+  npm run dev
+  ```
 
-This will watch for changes and rebuild the extension automatically.
+- Type-check the code:
 
-## Troubleshooting
+  ```
+  npm run type-check
+  ```
 
-If you encounter issues loading the extension:
+- Lint the code:
+  ```
+  npm run lint
+  ```
 
-1. Make sure all icon files exist in the `public/icons` directory
-2. Check that the manifest.json file is correctly referencing the icon paths
-3. Verify that the popup/index.html file exists in the public directory
-4. After making changes, rebuild the extension with `npm run build`
+## Architecture
+
+The extension consists of the following components:
+
+- **Background Script**: Handles authentication, data processing, and communication between components
+- **Content Script**: Extracts text content from web pages and identifies homework questions
+- **Popup UI**: Provides the chat interface and user interaction
+- **API Service**: Communicates with the EducaThor Hub and Gemini API
+
+## Gemini API Integration
+
+TuzzAI uses the Gemini API for:
+
+1. **Page Analysis**: Analyzing homework content to identify questions and key concepts
+2. **Chat Responses**: Generating helpful explanations and hints for student questions
+
+To use the extension, you need to provide your own Gemini API key. You can obtain one from the [Google AI Studio](https://makersuite.google.com/app/apikey).
+
+## License
+
+[MIT License](LICENSE)

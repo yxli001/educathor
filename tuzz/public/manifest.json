@@ -1,13 +1,10 @@
 {
-  "name": "TuzzAI",
-  "description": "A Chrome Extension for TuzzAI in the EducaThor suite.",
-  "version": "0.1.0",
   "manifest_version": 3,
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
+  "name": "TuzzAI",
+  "version": "1.0.0",
+  "description": "AI-powered homework helper that provides explanations and hints without giving direct answers",
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup/index.html",
     "default_icon": {
@@ -17,14 +14,18 @@
     }
   },
   "background": {
-    "service_worker": "background/index.js"
+    "service_worker": "background/index.js",
+    "type": "module"
   },
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content/contentScript.js"]
     }
   ],
-  "host_permissions": ["<all_urls>"]
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }
