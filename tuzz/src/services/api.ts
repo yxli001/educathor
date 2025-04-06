@@ -259,11 +259,29 @@ export class ApiService {
       console.log("Gemini API response:", data);
 
       // Extract the message from the response
-      const messageText =
+      let messageText =
         data.candidates[0]?.content.parts[0]?.text || "No response from AI";
 
       // Extract hints from the message (if any)
       const hints = this.extractHints(messageText);
+
+      // Remove hints from the main message text
+      if (hints.length > 0) {
+        // Remove the "Here are a few hints to help you:" line if it exists
+        messageText = messageText.replace(
+          /Here are a few hints to help you:[\s\S]*$/,
+          ""
+        );
+
+        // Remove any remaining hint lines
+        messageText = messageText.replace(/Hint\s*\d+:\s*[^\n]+/g, "");
+
+        // Clean up any double newlines that might be left
+        messageText = messageText.replace(/\n\s*\n\s*\n/g, "\n\n");
+
+        // Trim the message
+        messageText = messageText.trim();
+      }
 
       return {
         message: messageText,

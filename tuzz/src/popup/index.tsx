@@ -248,7 +248,7 @@ const Popup: React.FC = () => {
   const handleRevealHint = (hintId: string) => {
     setHints((prev) =>
       prev.map((hint) =>
-        hint.id === hintId ? { ...hint, isRevealed: true } : hint
+        hint.id === hintId ? { ...hint, isRevealed: !hint.isRevealed } : hint
       )
     );
   };
