@@ -121,6 +121,7 @@ const refineLatex = async (
         throw new Error("Error refining cheat sheet.");
     }
 };
+/*
 const generatePdfFromLatexWithExec = async (
     // UNUSED, DO NOT USE THIS, BAD CODE, WONT WORK ON ALL DEVICES
     latexCode: string,
@@ -154,7 +155,7 @@ const generatePdfFromLatexWithExec = async (
     await fsx.remove(path.join(tempDir, `${fileName}.aux`));
     await fsx.remove(path.join(tempDir, `${fileName}.log`));
     return pdfBuffer;
-};
+};  */
 
 const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
     // THIS ONE IS BETTER, LEAVES NO TRACE AND WORKS ON ALL DEVICES
