@@ -13,8 +13,8 @@ const API_ENDPOINTS = {
   CHAT: `${EDUCA_THOR_HUB_URL}/api/chat`,
 };
 
-// Set this to false to bypass authentication
-const REQUIRE_AUTH = false;
+// Set this to true to enable authentication
+const REQUIRE_AUTH = true;
 
 // Types
 export interface AuthResponse {
@@ -65,10 +65,14 @@ export class ApiService {
 
   // Load token from storage
   private loadToken(): void {
-    chrome.storage.local.get(["tuzzai_auth_token"], (result) => {
-      if (result.tuzzai_auth_token) {
-        this.token = result.tuzzai_auth_token;
+    chrome.storage.local.get(["accessToken"], (result) => {
+      if (result.accessToken) {
+        this.token = result.accessToken;
         this.isAuthenticatedFlag = true;
+        console.log(
+          "Token loaded from storage:",
+          this.token ? "Token is set" : "Token is missing"
+        );
       }
     });
   }
@@ -80,21 +84,30 @@ export class ApiService {
 
   // Get authentication URL
   public getAuthUrl(): string {
-    return API_ENDPOINTS.AUTH;
+    return `${EDUCA_THOR_HUB_URL}/auth-bridge`;
   }
 
   // Set authentication token
   public setToken(token: string): void {
     this.token = token;
     this.isAuthenticatedFlag = true;
-    chrome.storage.local.set({ tuzzai_auth_token: token });
+    chrome.storage.local.set({ accessToken: token }, () => {
+      console.log("Token stored successfully");
+    });
   }
 
   // Clear authentication token
   public clearToken(): void {
     this.token = null;
     this.isAuthenticatedFlag = false;
-    chrome.storage.local.remove("tuzzai_auth_token");
+    chrome.storage.local.remove("accessToken", () => {
+      console.log("Token cleared successfully");
+    });
+  }
+
+  // Get the current token
+  public getToken(): string | null {
+    return this.token;
   }
 
   // Analyze page content using Gemini API

@@ -11,6 +11,6 @@
 export const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
 
 // EducaThor Hub URL (if needed)
-export const EDUCA_THOR_HUB_URL = "https://educathor-hub.example.com";
+export const EDUCA_THOR_HUB_URL = "http://localhost:5173";
 
 // Other API keys can be added here as needed

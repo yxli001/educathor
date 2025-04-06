@@ -4,10 +4,9 @@ import { apiService } from "../services/api";
 import ReactMarkdown from "react-markdown";
 
 // Constants
-const EDUCA_THOR_HUB_URL = "https://educathor.com/hub";
-const AUTH_STORAGE_KEY = "tuzzai_auth_token";
-// Set this to false to bypass authentication
-const REQUIRE_AUTH = false;
+const EDUCA_THOR_HUB_URL = "http://localhost:5173";
+// Set this to true to enable authentication
+const REQUIRE_AUTH = true;
 
 // Types
 interface Message {
@@ -26,9 +25,7 @@ interface Hint {
 // Main Popup Component
 const Popup: React.FC = () => {
   // State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    !REQUIRE_AUTH
-  );
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -48,9 +45,7 @@ const Popup: React.FC = () => {
 
   // Check authentication status on mount
   useEffect(() => {
-    if (REQUIRE_AUTH) {
-      checkAuthStatus();
-    }
+    checkAuthStatus();
     capturePageContent();
     getHighlightedText();
 
@@ -84,6 +79,16 @@ const Popup: React.FC = () => {
       true
     );
 
+    // Listen for auth status changes from background script
+    const handleAuthStatusChange = (message: any) => {
+      if (message.type === "AUTH_STATUS_CHANGED") {
+        console.log("Auth status changed:", message.isAuthenticated);
+        setIsAuthenticated(message.isAuthenticated);
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleAuthStatusChange);
+
     // Clean up event listeners
     return () => {
       window.removeEventListener("click", handleClickOutside, true);
@@ -95,6 +100,7 @@ const Popup: React.FC = () => {
         },
         true
       );
+      chrome.runtime.onMessage.removeListener(handleAuthStatusChange);
     };
   }, []);
 
@@ -107,23 +113,50 @@ const Popup: React.FC = () => {
   const checkAuthStatus = async () => {
     const authenticated = apiService.isAuthenticated();
     setIsAuthenticated(authenticated);
+    console.log("Authentication status:", authenticated);
   };
 
   // Handle authentication
   const handleAuth = () => {
-    // Open EducaThor Hub in a new tab
-    chrome.tabs.create({ url: apiService.getAuthUrl() });
+    console.log("Opening auth window");
+    // Open EducaThor Hub auth bridge in a popup
+    const authWindow = window.open(
+      `${EDUCA_THOR_HUB_URL}/auth-bridge`,
+      "auth_window",
+      "width=500,height=600,menubar=no,toolbar=no,location=no,status=no"
+    );
 
-    // Listen for auth success message
-    const authListener = (message: any) => {
-      if (message.type === "AUTH_SUCCESS") {
-        apiService.setToken(message.token);
+    if (!authWindow) {
+      console.error("Failed to open auth window. Popup might be blocked.");
+      alert("Please allow popups for this site to authenticate.");
+      return;
+    }
+
+    // Focus the auth window
+    authWindow.focus();
+
+    // Listen for auth token from EducaThor Hub
+    const handleMessage = (event: MessageEvent) => {
+      console.log("Received message:", event.data);
+      if (event.data?.type === "educathor-token") {
+        const token = event.data.token;
+        apiService.setToken(token);
         setIsAuthenticated(true);
-        chrome.runtime.onMessage.removeListener(authListener);
+        console.log("Got token from EducaThor Hub!", token);
+
+        // Close the auth window
+        if (authWindow) {
+          authWindow.close();
+        }
       }
     };
 
-    chrome.runtime.onMessage.addListener(authListener);
+    window.addEventListener("message", handleMessage);
+
+    // Clean up the message listener after a timeout
+    setTimeout(() => {
+      window.removeEventListener("message", handleMessage);
+    }, 60000); // 1 minute timeout
   };
 
   // Handle closing the popup

@@ -4,7 +4,7 @@
 // This script runs in the background and handles authentication and data processing
 
 // Constants
-const AUTH_STORAGE_KEY = "tuzzai_auth_token";
+const AUTH_STORAGE_KEY = "accessToken";
 const PAGE_DATA_STORAGE_KEY = "tuzzai_page_data";
 
 // Store for the latest analyzed page data
@@ -15,6 +15,27 @@ let popupWindowId: number | null = null;
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("Background script received message:", message);
+
+  // Handle auth token from EducaThor Hub
+  if (message.type === "educathor-token") {
+    console.log("Received auth token from EducaThor Hub");
+
+    // Store the token
+    chrome.storage.local.set({ [AUTH_STORAGE_KEY]: message.token }, () => {
+      console.log("Auth token stored successfully");
+
+      // Notify all extension views about successful authentication
+      chrome.runtime.sendMessage({
+        type: "AUTH_STATUS_CHANGED",
+        isAuthenticated: true,
+      });
+
+      // Send response back to the auth bridge
+      sendResponse({ success: true });
+    });
+
+    return true; // Indicates we'll send a response asynchronously
+  }
 
   // Handle page analysis data from content script
   if (message.type === "PAGE_ANALYZED") {
@@ -56,22 +77,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Indicates we'll send a response asynchronously
   }
 
-  // Handle authentication success from EducaThor Hub
-  if (message.type === "AUTH_SUCCESS") {
-    // Store the auth token
-    chrome.storage.local.set({ [AUTH_STORAGE_KEY]: message.token }, () => {
-      console.log("Auth token stored");
-
-      // Notify all extension views about successful authentication
-      chrome.runtime.sendMessage({
-        type: "AUTH_STATUS_CHANGED",
-        isAuthenticated: true,
-      });
-    });
-
-    sendResponse({ success: true });
-  }
-
   // Handle request for page data
   if (message.type === "GET_PAGE_DATA") {
     sendResponse({ data: latestPageData });
@@ -100,8 +105,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: true });
         });
       } else {
-        console.log("No window ID found");
-        sendResponse({ success: false, error: "No window ID found" });
+        console.error("Failed to get current window");
+        sendResponse({ success: false });
       }
     });
 
@@ -168,18 +173,19 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 
 // Initialize the background script
 function initialize() {
-  console.log("TuzzAI background script initialized");
+  console.log("Background script initialized");
 
-  // Check if we have stored page data
-  chrome.storage.local.get([PAGE_DATA_STORAGE_KEY], (result) => {
-    if (result[PAGE_DATA_STORAGE_KEY]) {
-      latestPageData = result[PAGE_DATA_STORAGE_KEY];
-      console.log("Loaded stored page data:", latestPageData);
+  // Check if we have a stored token
+  chrome.storage.local.get([AUTH_STORAGE_KEY], (result) => {
+    if (result[AUTH_STORAGE_KEY]) {
+      console.log("Found stored token");
+    } else {
+      console.log("No stored token found");
     }
   });
 }
 
-// Run the initialization when the background script loads
+// Run initialization
 initialize();
 
 export {};
