@@ -351,24 +351,27 @@ const Popup: React.FC = () => {
   // Handle screenshot capture
   const handleScreenshot = async () => {
     try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
-      if (tab.id) {
-        const dataUrl = await chrome.tabs.captureVisibleTab();
-        const screenshotImg = document.getElementById(
-          "screenshotImg"
-        ) as HTMLImageElement;
-        const screenshotPreview = document.getElementById(
-          "screenshotPreview"
-        ) as HTMLDivElement;
+      // Get current window ID first
+      const currentWindow = await chrome.windows.getCurrent();
+      if (!currentWindow.id) return;
 
-        if (screenshotImg && screenshotPreview) {
-          screenshotImg.src = dataUrl;
-          screenshotPreview.classList.add("visible");
-          setIsScreenshotPreviewVisible(true);
-        }
+      // Capture the screenshot
+      const dataUrl = await chrome.tabs.captureVisibleTab(currentWindow.id, {
+        format: "png",
+      });
+
+      // Update the preview
+      const screenshotImg = document.getElementById(
+        "screenshotImg"
+      ) as HTMLImageElement;
+      const screenshotPreview = document.getElementById(
+        "screenshotPreview"
+      ) as HTMLDivElement;
+
+      if (screenshotImg && screenshotPreview) {
+        screenshotImg.src = dataUrl;
+        screenshotPreview.classList.add("visible");
+        setIsScreenshotPreviewVisible(true);
       }
     } catch (error) {
       console.error("Error capturing screenshot:", error);
@@ -380,29 +383,25 @@ const Popup: React.FC = () => {
     const screenshotImg = document.getElementById(
       "screenshotImg"
     ) as HTMLImageElement;
-    const screenshotPreview = document.getElementById(
-      "screenshotPreview"
-    ) as HTMLDivElement;
-
-    if (screenshotImg && screenshotPreview) {
+    if (screenshotImg && screenshotImg.src) {
       // Here you can add code to handle the confirmed screenshot
+      // For example, send it to your server or save it
       console.log("Screenshot confirmed:", screenshotImg.src);
-      screenshotPreview.classList.remove("visible");
-      setIsScreenshotPreviewVisible(false);
     }
+    hideScreenshotPreview();
   };
 
   // Handle screenshot cancellation
   const handleCancelScreenshot = () => {
-    const screenshotImg = document.getElementById(
-      "screenshotImg"
-    ) as HTMLImageElement;
+    hideScreenshotPreview();
+  };
+
+  // Helper to hide screenshot preview
+  const hideScreenshotPreview = () => {
     const screenshotPreview = document.getElementById(
       "screenshotPreview"
     ) as HTMLDivElement;
-
-    if (screenshotImg && screenshotPreview) {
-      screenshotImg.src = "";
+    if (screenshotPreview) {
       screenshotPreview.classList.remove("visible");
       setIsScreenshotPreviewVisible(false);
     }
@@ -414,26 +413,14 @@ const Popup: React.FC = () => {
     const confirmBtn = document.getElementById("confirmScreenshot");
     const cancelBtn = document.getElementById("cancelScreenshot");
 
-    if (captureBtn) {
-      captureBtn.addEventListener("click", handleScreenshot);
-    }
-    if (confirmBtn) {
-      confirmBtn.addEventListener("click", handleConfirmScreenshot);
-    }
-    if (cancelBtn) {
-      cancelBtn.addEventListener("click", handleCancelScreenshot);
-    }
+    captureBtn?.addEventListener("click", handleScreenshot);
+    confirmBtn?.addEventListener("click", handleConfirmScreenshot);
+    cancelBtn?.addEventListener("click", handleCancelScreenshot);
 
     return () => {
-      if (captureBtn) {
-        captureBtn.removeEventListener("click", handleScreenshot);
-      }
-      if (confirmBtn) {
-        confirmBtn.removeEventListener("click", handleConfirmScreenshot);
-      }
-      if (cancelBtn) {
-        cancelBtn.removeEventListener("click", handleCancelScreenshot);
-      }
+      captureBtn?.removeEventListener("click", handleScreenshot);
+      confirmBtn?.removeEventListener("click", handleConfirmScreenshot);
+      cancelBtn?.removeEventListener("click", handleCancelScreenshot);
     };
   }, []);
 
@@ -469,6 +456,7 @@ const Popup: React.FC = () => {
             className="camera-button"
             id="captureBtn"
             title="Take Screenshot"
+            onClick={handleScreenshot}
           >
             📸
           </button>
@@ -560,6 +548,19 @@ const Popup: React.FC = () => {
         >
           {isLoading ? "..." : "Send"}
         </button>
+      </div>
+
+      {/* Screenshot preview section */}
+      <div className="screenshot-preview" id="screenshotPreview">
+        <img id="screenshotImg" alt="Screenshot preview" />
+        <div className="preview-actions">
+          <button className="cancel-btn" id="cancelScreenshot">
+            Cancel
+          </button>
+          <button className="confirm-btn" id="confirmScreenshot">
+            Confirm
+          </button>
+        </div>
       </div>
     </div>
   );
