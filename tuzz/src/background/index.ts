@@ -28,7 +28,7 @@ self.addEventListener("message", (event) => {
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("Background script received message asdfasdfasdf:", message);
+    console.log("Background script received message:", message);
 
     console.log("Sender:", sender);
 

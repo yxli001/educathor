@@ -8,6 +8,7 @@ const AuthBridge = () => {
         getAccessTokenSilently,
         loginWithRedirect,
     } = useAuth0();
+
     useEffect(() => {
         const sendTokenToExtension = async () => {
             try {
@@ -24,7 +25,9 @@ const AuthBridge = () => {
                     "*"
                 );
 
-                window.close();
+                setTimeout(() => {
+                    window.close();
+                }, 1000);
             } catch (err) {
                 console.error("Failed to get token:", err);
             }

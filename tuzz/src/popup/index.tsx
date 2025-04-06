@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 // Constants
 const EDUCA_THOR_HUB_URL = "http://localhost:5173";
 // Set this to true to enable authentication
-const REQUIRE_AUTH = false;
+const REQUIRE_AUTH = true;
 
 // Types
 interface Message {
@@ -111,13 +111,67 @@ const Popup: React.FC = () => {
 
     // Check authentication status
     const checkAuthStatus = async () => {
+        console.log("Checking authentication status...");
+
         chrome.runtime.sendMessage(
             { type: "CHECK_AUTH_STATUS" },
             (response) => {
-                console.log("Auth status response:", response);
-                setIsAuthenticated(response.isAuthenticated);
+                if (response?.isAuthenticated) {
+                    setIsAuthenticated(true);
+                    console.log("User is authenticated.");
+                } else {
+                    setIsAuthenticated(false);
+                    console.log("User is not authenticated.");
+                }
             }
         );
+
+        console.log("Authentication status:", isAuthenticated);
+    };
+
+    // Handle authentication
+    const handleAuth = () => {
+        console.log("Opening auth window");
+        // Open EducaThor Hub auth bridge in a popup
+        const authWindow = window.open(
+            `${EDUCA_THOR_HUB_URL}/auth-bridge`,
+            "auth_window",
+            "width=500,height=600,menubar=no,toolbar=no,location=no,status=no"
+        );
+
+        if (!authWindow) {
+            console.error(
+                "Failed to open auth window. Popup might be blocked."
+            );
+            alert("Please allow popups for this site to authenticate.");
+            return;
+        }
+
+        // Focus the auth window
+        authWindow.focus();
+
+        // Listen for auth token from EducaThor Hub
+        const handleMessage = (event: MessageEvent) => {
+            console.log("Received message:", event.data);
+            if (event.data?.type === "educathor-token") {
+                const token = event.data.token;
+                apiService.setToken(token);
+                setIsAuthenticated(true);
+                console.log("Got token from EducaThor Hub!", token);
+
+                // Close the auth window
+                if (authWindow) {
+                    authWindow.close();
+                }
+            }
+        };
+
+        window.addEventListener("message", handleMessage);
+
+        // Clean up the message listener after a timeout
+        setTimeout(() => {
+            window.removeEventListener("message", handleMessage);
+        }, 60000); // 1 minute timeout
     };
 
     // Handle closing the popup
