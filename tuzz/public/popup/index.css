@@ -358,14 +358,12 @@ body {
 
 /* Screenshot preview section */
 .screenshot-preview {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.9);
-  padding: 16px;
+  position: relative;
+  width: 100%;
+  background: #f9f9f9;
+  padding: 12px;
   display: none;
-  z-index: 100;
+  border-top: 1px solid #eee;
 }
 
 .screenshot-preview.visible {
@@ -374,15 +372,18 @@ body {
 
 .screenshot-preview img {
   width: 100%;
-  height: auto;
+  max-height: 200px;
+  object-fit: contain;
   border-radius: 8px;
   margin-bottom: 0;
+  border: 1px solid #eee;
 }
 
 .preview-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 8px;
 }
 
 .preview-actions button {

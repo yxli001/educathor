@@ -254,10 +254,40 @@ const Popup: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Resize image to reduce file size
+  const resizeImage = (
+    dataUrl: string,
+    maxWidth: number = 800
+  ): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = dataUrl;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d")!;
+
+        // Calculate new dimensions while maintaining aspect ratio
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = (maxWidth * height) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw and compress image
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.7)); // Use JPEG with 70% quality
+      };
+    });
+  };
+
   // Handle screenshot capture
   const handleScreenshot = async () => {
     try {
-      // Request permissions first
+      // Get the active tab
       const [tab] = await chrome.tabs.query({
         active: true,
         currentWindow: true,
@@ -274,34 +304,53 @@ const Popup: React.FC = () => {
         },
       });
 
-      // Get current window
-      const currentWindow = await chrome.windows.getCurrent();
-      if (!currentWindow.id) {
+      // Get the window ID from the active tab
+      const tabWindow = await chrome.windows.get(tab.windowId);
+      if (!tabWindow.id) {
         throw new Error("No window ID found");
       }
 
-      // Capture the screenshot
-      const dataUrl = await chrome.tabs.captureVisibleTab(currentWindow.id, {
+      // Capture the screenshot from the tab's window
+      const dataUrl = await chrome.tabs.captureVisibleTab(tabWindow.id, {
         format: "png",
       });
 
-      // Update the preview and store screenshot
+      console.log("Screenshot captured:", {
+        success: !!dataUrl,
+        length: dataUrl?.length,
+        preview: dataUrl ? dataUrl.substring(0, 50) + "..." : "none",
+      });
+
+      // Resize the screenshot
+      const resizedDataUrl = await resizeImage(dataUrl);
+      console.log("Screenshot resized:", {
+        originalSize: dataUrl.length,
+        resizedSize: resizedDataUrl.length,
+        reduction:
+          Math.round((1 - resizedDataUrl.length / dataUrl.length) * 100) + "%",
+      });
+
+      // Store screenshot in state
+      setCurrentScreenshot(resizedDataUrl);
+      console.log("Screenshot stored in state:", {
+        exists: !!resizedDataUrl,
+        length: resizedDataUrl?.length,
+      });
+
+      // Update the preview image
       const screenshotImg = document.getElementById(
         "screenshotImg"
       ) as HTMLImageElement;
       const screenshotPreview = document.getElementById(
         "screenshotPreview"
       ) as HTMLDivElement;
-
       if (screenshotImg && screenshotPreview) {
-        screenshotImg.src = dataUrl;
+        screenshotImg.src = resizedDataUrl;
         screenshotPreview.classList.add("visible");
-        setCurrentScreenshot(dataUrl);
-        setIsScreenshotPreviewVisible(true);
+        console.log("Screenshot preview updated");
       }
     } catch (error) {
       console.error("Error capturing screenshot:", error);
-      // Show error message to user
       const errorMessage: Message = {
         id: Date.now().toString(),
         text: "Failed to capture screenshot. Please make sure you've granted the necessary permissions.",
@@ -327,6 +376,15 @@ const Popup: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Log the screenshot status and data
+      console.log("Current screenshot state:", {
+        exists: !!currentScreenshot,
+        length: currentScreenshot?.length,
+        preview: currentScreenshot
+          ? currentScreenshot.substring(0, 50) + "..."
+          : "none",
+      });
+
       // Send message to API with screenshot if available
       const response = await apiService.sendChatMessage(
         userMessage.text,
@@ -342,7 +400,6 @@ const Popup: React.FC = () => {
       ) as HTMLDivElement;
       if (screenshotPreview) {
         screenshotPreview.classList.remove("visible");
-        setIsScreenshotPreviewVisible(false);
       }
 
       // Add bot response
@@ -365,14 +422,11 @@ const Popup: React.FC = () => {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-
-      // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "Sorry, I encountered an error. Please try again later.",
         sender: "bot",
       };
-
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -533,7 +587,7 @@ const Popup: React.FC = () => {
         </button>
       </div>
 
-      {/* Screenshot preview section - removed buttons */}
+      {/* Screenshot preview section */}
       <div className="screenshot-preview" id="screenshotPreview">
         <img id="screenshotImg" alt="Screenshot preview" />
       </div>

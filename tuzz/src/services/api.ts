@@ -160,6 +160,11 @@ export class ApiService {
   ): Promise<ChatResponse> {
     try {
       console.log("Sending chat message to backend:", message);
+      console.log("Screenshot details:", {
+        exists: !!screenshot,
+        length: screenshot?.length,
+        preview: screenshot ? screenshot.substring(0, 50) + "..." : "none",
+      });
 
       // Get user ID from token
       const token = this.getToken();
@@ -174,14 +179,14 @@ export class ApiService {
 
       // Prepare the request body
       const requestBody = {
-        prompt: message, // The backend expects 'prompt' instead of 'message'
+        prompt: message,
         userId: userId,
         pageContent,
         highlightedText,
         screenshot,
       };
 
-      console.log("Request body:", requestBody);
+      console.log("Request body screenshot:", !!requestBody.screenshot);
 
       // Make the API request to the backend
       const response = await fetch(`${EDUCA_THOR_API_URL}/api/gemini/chat`, {
