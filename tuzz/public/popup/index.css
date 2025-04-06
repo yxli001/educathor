@@ -4,7 +4,8 @@ body {
   height: 600px;
   margin: 0;
   padding: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
   background-color: #f5f5f5;
   color: #333;
 }
@@ -135,7 +136,7 @@ body {
 
 .message {
   max-width: 80%;
-  padding: 10px 15px;
+  padding: 12px 16px;
   border-radius: 18px;
   margin-bottom: 5px;
   position: relative;
@@ -143,21 +144,22 @@ body {
 
 .user-message {
   align-self: flex-end;
-  background-color: #3498db;
+  background-color: #4a6cf7;
   color: white;
   border-bottom-right-radius: 4px;
 }
 
 .bot-message {
   align-self: flex-start;
-  background-color: #f1f1f1;
+  background-color: #f0f2ff;
   color: #333;
   border-bottom-left-radius: 4px;
 }
 
 .message-content {
+  font-size: 16px;
+  line-height: 1.5;
   word-wrap: break-word;
-  white-space: pre-wrap;
 }
 
 .message-timestamp {
@@ -170,42 +172,42 @@ body {
 .input-container {
   display: flex;
   padding: 15px;
-  background-color: #f5f5f5;
-  border-top: 1px solid #e0e0e0;
+  background-color: #f9f9f9;
+  border-top: 1px solid #eee;
 }
 
 .input-container input {
   flex: 1;
-  padding: 10px 15px;
+  padding: 12px 16px;
   border: 1px solid #ddd;
   border-radius: 20px;
   outline: none;
-  font-size: 14px;
-  transition: border-color 0.3s;
+  font-size: 16px;
+  transition: border-color 0.2s;
 }
 
 .input-container input:focus {
-  border-color: #3498db;
+  border-color: #4a6cf7;
 }
 
 .input-container button {
   margin-left: 10px;
-  background-color: #3498db;
+  background-color: #4a6cf7;
   color: white;
   border: none;
-  padding: 10px 15px;
+  padding: 0 20px;
   border-radius: 20px;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
+  font-size: 16px;
+  transition: background-color 0.2s;
 }
 
 .input-container button:hover:not(:disabled) {
-  background-color: #2980b9;
+  background-color: #3a5ce5;
 }
 
 .input-container button:disabled {
-  background-color: #bdc3c7;
+  background-color: #a0b1f7;
   cursor: not-allowed;
 }
 
@@ -231,14 +233,14 @@ body {
 .hints-container {
   margin: 10px 0;
   padding: 10px;
-  background-color: #f5f5f5;
+  background-color: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
 }
 
-.hints-container h3 {
-  margin: 0 0 10px 0;
-  font-size: 16px;
-  color: #333;
+.hints-container h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #666;
 }
 
 .hint-item {
@@ -275,4 +277,60 @@ body {
 .reveal-hint-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+}
+
+/* Markdown styling */
+.message-content p {
+  margin: 0 0 10px 0;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.message-content strong,
+.message-content b {
+  font-weight: 700;
+}
+
+.message-content em,
+.message-content i {
+  font-style: italic;
+}
+
+.message-content ul,
+.message-content ol {
+  margin: 0 0 10px 0;
+  padding-left: 20px;
+}
+
+.message-content li {
+  margin-bottom: 5px;
+}
+
+.message-content code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+.message-content pre {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 0 0 10px 0;
+}
+
+.message-content pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.message-content blockquote {
+  border-left: 3px solid #4a6cf7;
+  margin: 0 0 10px 0;
+  padding-left: 10px;
+  color: #666;
 }

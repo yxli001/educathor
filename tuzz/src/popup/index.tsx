@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { apiService } from "../services/api";
+import ReactMarkdown from "react-markdown";
 
 // Constants
 const EDUCA_THOR_HUB_URL = "https://educathor.com/hub";
@@ -13,7 +14,7 @@ interface Message {
   id: string;
   text: string;
   sender: "user" | "bot";
-  timestamp: Date;
+  hints?: string[];
 }
 
 interface Hint {
@@ -33,7 +34,6 @@ const Popup: React.FC = () => {
       id: "1",
       text: "Hello! I'm TuzzAI, your homework helper. How can I assist you today?",
       sender: "bot",
-      timestamp: new Date(),
     },
   ]);
   const [inputValue, setInputValue] = useState<string>("");
@@ -196,7 +196,6 @@ const Popup: React.FC = () => {
       id: Date.now().toString(),
       text: inputValue,
       sender: "user",
-      timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -216,7 +215,7 @@ const Popup: React.FC = () => {
         id: (Date.now() + 1).toString(),
         text: response.message,
         sender: "bot",
-        timestamp: new Date(),
+        hints: response.hints,
       };
 
       setMessages((prev) => [...prev, botMessage]);
@@ -238,7 +237,6 @@ const Popup: React.FC = () => {
         id: (Date.now() + 1).toString(),
         text: "Sorry, I encountered an error. Please try again later.",
         sender: "bot",
-        timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, errorMessage]);
@@ -275,80 +273,143 @@ const Popup: React.FC = () => {
     handleSendMessage();
   };
 
-  return (
-    <div className="popup-container" ref={popupRef}>
-      <button className="close-button" onClick={handleClosePopup}>
-        ×
-      </button>
-      {!isAuthenticated && REQUIRE_AUTH ? (
+  // Handle hint click
+  const handleHintClick = (hint: string) => {
+    // Add hint as a user message
+    const hintMessage: Message = {
+      id: Date.now().toString(),
+      text: `Hint: ${hint}`,
+      sender: "user",
+    };
+    setMessages((prev) => [...prev, hintMessage]);
+    setInputValue("");
+
+    // Show loading state
+    setIsLoading(true);
+
+    // Send hint to API
+    apiService
+      .sendChatMessage(`Please explain this hint: ${hint}`, pageContent)
+      .then((response) => {
+        // Add bot message to chat
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: response.message,
+          sender: "bot",
+          hints: response.hints,
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      })
+      .catch((error) => {
+        console.error("Error sending hint:", error);
+        // Add error message to chat
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: "Sorry, I encountered an error. Please try again.",
+          sender: "bot",
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  // Render authentication required message
+  if (REQUIRE_AUTH && !isAuthenticated) {
+    return (
+      <div className="popup-container" ref={popupRef}>
         <div className="auth-container">
-          <h2>Welcome to TuzzAI</h2>
-          <p>Please log in to the EducaThor Hub to continue.</p>
-          <button onClick={handleAuth} className="auth-button">
-            Log in to EducaThor Hub
+          <h2>Authentication Required</h2>
+          <p>Please log in to use TuzzAI.</p>
+          <button
+            className="auth-button"
+            onClick={() => {
+              chrome.tabs.create({ url: apiService.getAuthUrl() });
+            }}
+          >
+            Log In
           </button>
         </div>
-      ) : (
-        <div className="chat-container">
-          <div className="messages-container">
+      </div>
+    );
+  }
+
+  // Render main popup content
+  return (
+    <div className="popup-container" ref={popupRef}>
+      <div className="header">
+        <h1>TuzzAI</h1>
+        <button className="close-button" onClick={handleClosePopup}>
+          ×
+        </button>
+      </div>
+
+      <div className="chat-container">
+        {messages.length === 0 ? (
+          <div className="welcome-message">
+            <h2>Welcome to TuzzAI!</h2>
+            <p>
+              Ask me anything about your homework, and I'll help you understand
+              it better.
+            </p>
+            <p>
+              I won't give you direct answers, but I'll provide hints and
+              explanations to help you learn.
+            </p>
+          </div>
+        ) : (
+          <div className="messages">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`message ${
-                  message.sender === "user" ? "user-message" : "bot-message"
+                  message.sender === "user" ? "user" : "bot"
                 }`}
               >
-                <div className="message-content">{message.text}</div>
-                <div className="message-timestamp">
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                <div className="message-content">
+                  <ReactMarkdown>{message.text}</ReactMarkdown>
                 </div>
+                {message.hints && message.hints.length > 0 && (
+                  <div className="hints-container">
+                    <h4>Hints:</h4>
+                    <div className="hints-buttons">
+                      {message.hints.map((hint, index) => (
+                        <button
+                          key={index}
+                          className="hint-button"
+                          onClick={() => handleHintClick(hint)}
+                        >
+                          Hint {index + 1}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
-
-            {/* Hints section */}
-            {hints.length > 0 && (
-              <div className="hints-container">
-                <h3>Hints</h3>
-                {hints.map((hint) => (
-                  <div key={hint.id} className="hint-item">
-                    {hint.isRevealed ? (
-                      <div className="hint-text">{hint.text}</div>
-                    ) : (
-                      <button
-                        onClick={() => handleRevealHint(hint.id)}
-                        className="reveal-hint-button"
-                      >
-                        Reveal Hint
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
             <div ref={messagesEndRef} />
           </div>
-          <div className="input-container">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask a question about your homework..."
-              disabled={isLoading}
-            />
-            <button
-              onClick={handleSendButtonClick}
-              disabled={isLoading || !inputValue.trim()}
-            >
-              {isLoading ? "Sending..." : "Send"}
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      <div className="input-container">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onKeyPress={handleKeyPress}
+          placeholder="Ask a question..."
+          className="chat-input"
+        />
+        <button
+          className="send-button"
+          onClick={handleSendButtonClick}
+          disabled={isLoading || !inputValue.trim()}
+        >
+          {isLoading ? "..." : "Send"}
+        </button>
+      </div>
     </div>
   );
 };

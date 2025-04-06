@@ -188,10 +188,18 @@ export class ApiService {
       }
 
       // Add instructions for the AI
-      prompt += `\n\nPlease provide helpful hints and explanations without giving direct answers. 
-      If the user has highlighted text, focus on that specific question or problem.
-      If the user mentions a specific question number or section, prioritize that in your response.
-      Your goal is to help the user understand the concept, not to solve the problem for them.`;
+      prompt += `\n\nPlease provide a CONCISE and helpful response with the following guidelines:
+      1. Keep your response brief and to the point (max 3-4 sentences)
+      2. Focus on explaining concepts rather than giving direct answers
+      3. If the user has highlighted text, focus on that specific question
+      4. If the user mentions a specific question number, prioritize that
+      5. Format your response with proper Markdown (use **bold** for emphasis)
+      6. End with 2-3 numbered hints that guide the user toward the answer without giving it directly
+      
+      Format your hints as:
+      Hint 1: [First hint]
+      Hint 2: [Second hint]
+      Hint 3: [Third hint if applicable]`;
 
       // Prepare the request body
       const requestBody = {
@@ -205,7 +213,7 @@ export class ApiService {
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 512, // Reduced from 1024 to encourage shorter responses
         },
         safetySettings: [
           {
@@ -303,13 +311,22 @@ export class ApiService {
 
   // Extract hints from the AI response
   private extractHints(message: string): string[] {
-    // Simple hint extraction - look for lines starting with "Hint:"
-    const hintRegex = /Hint:\s*([^\n]+)/g;
+    // Look for lines starting with "Hint 1:", "Hint 2:", etc.
+    const hintRegex = /Hint\s*\d+:\s*([^\n]+)/g;
     const hints: string[] = [];
     let match;
 
     while ((match = hintRegex.exec(message)) !== null) {
       hints.push(match[1].trim());
+    }
+
+    // If no hints found with the above pattern, try alternative patterns
+    if (hints.length === 0) {
+      // Try numbered list format (1. hint text)
+      const numberedHintRegex = /^\d+\.\s*([^\n]+)/gm;
+      while ((match = numberedHintRegex.exec(message)) !== null) {
+        hints.push(match[1].trim());
+      }
     }
 
     return hints;
