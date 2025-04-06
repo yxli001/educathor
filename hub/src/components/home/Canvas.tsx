@@ -147,7 +147,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const token = await getAccessTokenSilently();
 
                 await axios.post(
-                    "${BACKEND_URL}/api/canvas/update-positions",
+                    `${BACKEND_URL}/api/canvas/update-positions`,
                     { files: filePositions },
                     {
                         headers: {
@@ -174,7 +174,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             try {
                 const token = await getAccessTokenSilently();
 
-                const response = await axios.get("${BACKEND_URL}/api/canvas", {
+                const response = await axios.get(`${BACKEND_URL}/api/canvas`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },

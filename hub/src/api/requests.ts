@@ -15,7 +15,7 @@ type Method = "GET" | "POST" | "PATCH" | "DELETE";
  * every request. This means in the rest of our code, we can write "/api/foo"
  * instead of "http://localhost:3001/api/foo".
  */
-const API_BASE_URL = env.VITE_BACKEND_URL || "http://localhost:5174";
+const API_BASE_URL = env.VITE_BACKEND_URL;
 
 /**
  * A wrapper around the built-in `fetch()` function that abstracts away some of
