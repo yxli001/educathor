@@ -164,7 +164,20 @@ const chatHandler: RequestHandler = async (req, res, next) => {
     }
 
     // Prepare the prompt with context
-    let fullPrompt = `You are TuzzAI, a helpful homework assistant. The user is asking: "${prompt}"`;
+    let fullPrompt = `You are TuzzAI, a helpful homework assistant. The user is asking: "${prompt}"
+    
+    IMPORTANT: DO NOT solve the problem or provide the answer directly. Instead, provide:
+         1. Abstract reply to the user's question WITHOUT solving the problem directly.
+         2. A helpful explanation of the concepts involved
+         3. 2-3 hints that guide the student toward the answer without giving it directly
+         
+         Format your response as:
+         EXPLANATION: [Your explanation here]
+         HINTS:
+         1. [First hint]
+         2. [Second hint]
+         3. [Third hint if applicable]
+    `;
 
     if (pageContent) {
       fullPrompt += `\n\nContext from the current page: ${pageContent.substring(
