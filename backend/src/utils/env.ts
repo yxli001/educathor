@@ -13,6 +13,9 @@ const envSchema = z.object({
     FIREBASE_SERVICE_ACCOUNT_KEY: z
         .string()
         .min(1, "FIREBASE_SERVICE_ACCOUNT_KEY is required"),
+    FIREBASE_STORAGE_BUCKET: z
+        .string()
+        .min(1, "FIREBASE_STORAGE_BUCKET is required"),
     FRONTEND_ORIGIN: z
         .string()
         .min(1, "FRONTEND_ORIGIN is required")

@@ -20,6 +20,17 @@ const userSchema = new Schema({
             timestamp: { type: Date, default: Date.now },
         },
     ],
+    files: [
+        {
+            url: { type: String, required: true },
+            fileType: { type: String, required: true }, // Add fileType
+            position: {
+                x: { type: Number, required: true },
+                y: { type: Number, required: true },
+            },
+            uploadedAt: { type: Date, default: Date.now },
+        },
+    ],
 });
 
 type User = InferSchemaType<typeof userSchema>;

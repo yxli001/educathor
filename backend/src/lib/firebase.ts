@@ -21,6 +21,7 @@ if (!env.FIREBASE_SERVICE_ACCOUNT_KEY) {
 
 firebase.initializeApp({
     credential: firebase.cert(serviceAccountKey),
+    storageBucket: env.FIREBASE_STORAGE_BUCKET,
 });
 
 const storage = getStorage();

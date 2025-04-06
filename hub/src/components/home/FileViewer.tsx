@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { PdfFallback } from "./PdfFallback";
+import React from "react";
+// import { PdfFallback } from "./PdfFallback";
 
 interface FileViewerProps {
-    file: File | null;
+    file: {
+        url: string;
+        fileType: string;
+        fileName: string;
+    } | null;
     onClose: () => void;
     onDelete: () => void;
 }
@@ -12,32 +16,18 @@ export const FileViewer: React.FC<FileViewerProps> = ({
     onClose,
     onDelete,
 }) => {
-    const [fileUrl, setFileUrl] = useState<string>("");
-    const [pdfError, setPdfError] = useState<string | null>(null);
+    if (!file) return null;
 
-    useEffect(() => {
-        if (file) {
-            const url = URL.createObjectURL(file);
-            setFileUrl(url);
-            setPdfError(null);
-            return () => URL.revokeObjectURL(url);
-        }
-    }, [file]);
+    const { url, fileType, fileName } = file;
 
     const handleDownload = () => {
-        if (file) {
-            const url = URL.createObjectURL(file);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = file.name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     };
-
-    if (!file) return null;
 
     return (
         <div
@@ -63,7 +53,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                     alignItems: "center",
                 }}
             >
-                <h2>{file.name}</h2>
+                <h2>{fileName}</h2>
                 <div>
                     <button
                         onClick={onDelete}
@@ -94,17 +84,17 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                 </div>
             </div>
 
-            {file.type.startsWith("image/") ? (
+            {fileType.startsWith("image/") ? (
                 <img
-                    src={fileUrl}
-                    alt={file.name}
+                    src={url}
+                    alt={fileName}
                     style={{
                         maxWidth: "100%",
                         maxHeight: "calc(100vh - 100px)",
                         objectFit: "contain",
                     }}
                 />
-            ) : file.type === "application/pdf" ? (
+            ) : fileType === "application/pdf" ? (
                 <div
                     style={{
                         flex: 1,
@@ -113,26 +103,36 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                     }}
                 >
                     <iframe
-                        src={fileUrl}
+                        src={url}
                         style={{
                             width: "100%",
                             height: "100%",
                             border: "none",
                             borderRadius: "4px",
                         }}
-                        title={file.name}
-                        onError={() => setPdfError("Failed to load PDF")}
+                        title={fileName}
                     />
-                    {pdfError && (
-                        <PdfFallback file={file} onDownload={handleDownload} />
-                    )}
                 </div>
             ) : (
                 <div>
-                    <p>File type: {file.type || "Unknown"}</p>
-                    <p>Size: {Math.round(file.size / 1024)} KB</p>
+                    <p>File type: {fileType || "Unknown"}</p>
                 </div>
             )}
+
+            <button
+                onClick={handleDownload}
+                style={{
+                    padding: "10px 20px",
+                    backgroundColor: "#007bff",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "16px",
+                }}
+            >
+                Download
+            </button>
         </div>
     );
 };

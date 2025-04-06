@@ -11,6 +11,7 @@ import userRouter from "./routes/user";
 import geminiRouter from "./routes/gemini";
 import mindMapperRouter from "./routes/mindmapper";
 import cheatSheetRouter from "./routes/cheatsheet";
+import canvasRouter from "./routes/canvas";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/api/user", userRouter);
 app.use("/api/gemini", geminiRouter);
 app.use("/api/mindmapper", mindMapperRouter);
 app.use("/api/cheatsheet", cheatSheetRouter);
+app.use("/api/canvas", canvasRouter);
 
 app.use(errorHandler);
 

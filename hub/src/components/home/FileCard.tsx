@@ -6,7 +6,8 @@ interface Position {
 }
 
 interface FileCardProps {
-    file: File;
+    url: string; // Use URL instead of File
+    fileType: string; // Add fileType to determine rendering logic
     position: Position;
     zIndex: number;
     onSelect: () => void;
@@ -14,7 +15,8 @@ interface FileCardProps {
 }
 
 export const FileCard: React.FC<FileCardProps> = ({
-    file,
+    url,
+    fileType,
     position,
     zIndex,
     onSelect,
@@ -24,20 +26,8 @@ export const FileCard: React.FC<FileCardProps> = ({
     const [dragOffset, setDragOffset] = useState<Position>({ x: 0, y: 0 });
     const cardRef = useRef<HTMLDivElement>(null);
 
-    // Generate thumbnail URL
-    const [thumbnailUrl, setThumbnailUrl] = useState<string>("");
-
-    React.useEffect(() => {
-        if (file.type.startsWith("image/")) {
-            const url = URL.createObjectURL(file);
-            setThumbnailUrl(url);
-            return () => URL.revokeObjectURL(url);
-        }
-    }, [file]);
-
     const handleMouseDown = (e: React.MouseEvent) => {
         if (cardRef.current) {
-            setIsDragging(false); // Reset dragging state
             setIsDragging(true);
             const rect = cardRef.current.getBoundingClientRect();
             setDragOffset({
@@ -75,22 +65,22 @@ export const FileCard: React.FC<FileCardProps> = ({
     }, [isDragging]);
 
     const renderFilePreview = () => {
-        if (file.type.startsWith("image/") && thumbnailUrl) {
+        if (fileType.startsWith("image/")) {
             return (
                 <img
-                    src={thumbnailUrl}
-                    alt={file.name}
+                    src={url}
+                    alt="Preview"
                     style={{
                         width: "100%",
                         height: "100%",
                         objectFit: "cover",
                         borderRadius: "2px",
-                        userSelect: "none", // Prevent image selection
-                        pointerEvents: "none", // Ensure drag events pass through the image
+                        userSelect: "none",
+                        pointerEvents: "none",
                     }}
                 />
             );
-        } else if (file.type === "application/pdf") {
+        } else if (fileType === "application/pdf") {
             return (
                 <div
                     style={{
@@ -142,20 +132,6 @@ export const FileCard: React.FC<FileCardProps> = ({
                     <span style={{ fontSize: "10px", marginTop: "4px" }}>
                         PDF
                     </span>
-                    <div
-                        style={{
-                            fontSize: "8px",
-                            marginTop: "4px",
-                            maxWidth: "90px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            textAlign: "center",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        {file.name}
-                    </div>
                 </div>
             );
         } else {
@@ -170,7 +146,7 @@ export const FileCard: React.FC<FileCardProps> = ({
                         textAlign: "center",
                     }}
                 >
-                    {file.name}
+                    Unsupported File
                 </div>
             );
         }

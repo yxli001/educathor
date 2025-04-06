@@ -1,8 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { FileCard } from "./FileCard";
 import { FileViewer } from "./FileViewer";
+import axios from "axios";
 
 import { FileWithPosition } from "@/types/file";
+import { useAuth0 } from "@auth0/auth0-react";
 
 type CanvasProps = {
     files: FileWithPosition[];
@@ -17,7 +19,9 @@ export const Canvas: React.FC<CanvasProps> = ({
     maxZIndex,
     setMaxZIndex,
 }) => {
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const { getAccessTokenSilently } = useAuth0();
+
+    const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [clickPosition, setClickPosition] = useState<{
         x: number;
@@ -32,7 +36,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         }
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const uploadedFile = e.target.files?.[0];
         if (uploadedFile && clickPosition) {
             // Validate file type
@@ -44,15 +48,43 @@ export const Canvas: React.FC<CanvasProps> = ({
                 return;
             }
 
-            const newFile: FileWithPosition = {
-                file: uploadedFile,
-                position: {
-                    x: clickPosition.x - 50, // Center the card on click
-                    y: clickPosition.y - 50,
-                },
-                id: Math.random().toString(36).substr(2, 9),
-            };
-            setFiles((prev) => [...prev, newFile]);
+            try {
+                // Upload file to backend
+                const formData = new FormData();
+                formData.append("file", uploadedFile);
+                formData.append("position", JSON.stringify(clickPosition));
+
+                const token = await getAccessTokenSilently();
+
+                const response = await axios.post(
+                    "http://localhost:5174/api/canvas",
+                    formData,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "multipart/form-data",
+                        },
+                    }
+                );
+
+                const fileUrl = response.data.fileUrl;
+
+                const newFile: FileWithPosition = {
+                    url: fileUrl,
+                    fileType: uploadedFile.type,
+                    position: {
+                        x: clickPosition.x - 50, // Center the card on click
+                        y: clickPosition.y - 50,
+                    },
+                    id: response.data.id,
+                };
+
+                setFiles((prev) => [...prev, newFile]);
+            } catch (error) {
+                console.error("File upload failed:", error);
+                alert("Failed to upload file. Please try again.");
+            }
+
             // Reset input value to allow uploading the same file again
             e.target.value = "";
             setClickPosition(null);
@@ -70,24 +102,96 @@ export const Canvas: React.FC<CanvasProps> = ({
         );
     };
 
-    const handleCardSelect = (file: File) => {
-        setSelectedFile(file);
+    const handleCardSelect = (id: string) => {
+        setSelectedFileId(id);
         setMaxZIndex((prev) => prev + 1);
     };
 
     const handleDelete = () => {
-        if (selectedFile) {
-            setFiles((prev) => prev.filter((f) => f.file !== selectedFile));
-            setSelectedFile(null);
+        if (selectedFileId) {
+            setFiles((prev) =>
+                prev.filter((file) => file.id !== selectedFileId)
+            );
+            setSelectedFileId(null);
         }
     };
+
+    useEffect(() => {
+        const saveFilePositions = async () => {
+            try {
+                const filePositions = files.map(({ id, position }) => ({
+                    id,
+                    position,
+                }));
+
+                const token = await getAccessTokenSilently();
+
+                await axios.post(
+                    "http://localhost:5174/api/canvas/update-positions",
+                    { files: filePositions },
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                        withCredentials: true,
+                    }
+                );
+            } catch (error) {
+                console.error("Failed to save file positions:", error);
+            }
+        };
+
+        const intervalId = setInterval(saveFilePositions, 5000); // Save every 5 seconds
+
+        return () => {
+            clearInterval(intervalId); // Cleanup on component unmount
+            saveFilePositions(); // Save one last time on unmount
+        };
+    }, [files]);
+
+    useEffect(() => {
+        const fetchFiles = async () => {
+            try {
+                const token = await getAccessTokenSilently();
+
+                const response = await axios.get(
+                    "http://localhost:5174/api/canvas",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                        withCredentials: true,
+                    }
+                );
+
+                const fetchedFiles = response.data.files.map(
+                    (file: {
+                        _id: string;
+                        position: { x: number; y: number };
+                        url: string;
+                        fileType: string;
+                    }) => ({
+                        id: file._id, // Map MongoDB's `_id` to `id`
+                        url: file.url,
+                        fileType: file.fileType,
+                        position: file.position,
+                    })
+                );
+                setFiles(fetchedFiles);
+            } catch (error) {
+                console.error("Failed to fetch files:", error);
+            }
+        };
+
+        fetchFiles();
+    }, [setFiles]);
 
     return (
         <div
             className="flex flex-grow h-full bottom-0 items-center justify-center"
             onClick={handleCanvasClick}
         >
-            {files.length == 0 && (
+            {files.length === 0 && (
                 <p
                     className="text-center text-4xl font-extrabold"
                     style={{ opacity: 0.3 }}
@@ -106,12 +210,13 @@ export const Canvas: React.FC<CanvasProps> = ({
             {files.map((fileData, index) => (
                 <FileCard
                     key={fileData.id}
-                    file={fileData.file}
+                    url={fileData.url}
+                    fileType={fileData.fileType}
                     position={fileData.position}
                     zIndex={
-                        selectedFile === fileData.file ? maxZIndex : index + 1
+                        selectedFileId === fileData.id ? maxZIndex : index + 1
                     }
-                    onSelect={() => handleCardSelect(fileData.file)}
+                    onSelect={() => handleCardSelect(fileData.id)}
                     onPositionChange={(newPos) =>
                         handlePositionChange(fileData.id, newPos)
                     }
@@ -119,8 +224,22 @@ export const Canvas: React.FC<CanvasProps> = ({
             ))}
 
             <FileViewer
-                file={selectedFile}
-                onClose={() => setSelectedFile(null)}
+                file={
+                    selectedFileId
+                        ? {
+                              url:
+                                  files.find(
+                                      (file) => file.id === selectedFileId
+                                  )?.url || "",
+                              fileType:
+                                  files.find(
+                                      (file) => file.id === selectedFileId
+                                  )?.fileType || "",
+                              fileName: `File-${selectedFileId}`, // Use a placeholder name or fetch from backend if available
+                          }
+                        : null
+                }
+                onClose={() => setSelectedFileId(null)}
                 onDelete={handleDelete}
             />
         </div>
