@@ -380,23 +380,23 @@ const Popup: React.FC = () => {
       <div className="header">
         <div className="header-left">
           <h1>TuzzAI</h1>
+          <button
+            className="screenshot-button"
+            onClick={screenshot ? handleShowScreenshot : capturePageContent}
+            title={
+              screenshot
+                ? "View captured screenshot"
+                : "Capture page screenshot"
+            }
+          >
+            {screenshot ? "📸" : "📷"}
+          </button>
         </div>
         <div className="header-buttons">
           <button className="close-button" onClick={handleClosePopup}>
             ×
           </button>
         </div>
-      </div>
-      <div className="screenshot-button-container">
-        <button
-          className="screenshot-button"
-          onClick={screenshot ? handleShowScreenshot : capturePageContent}
-          title={
-            screenshot ? "View captured screenshot" : "Capture page screenshot"
-          }
-        >
-          {screenshot ? "📸" : "📷"}
-        </button>
       </div>
 
       <div className="chat-container">
