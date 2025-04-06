@@ -52,12 +52,12 @@ const extractPdfText = async (pdfPath: string): Promise<string> => {
     return pdfData.text;
 };
 const queryGeminiLatex = async (text: string): Promise<string> => {
+    const prompt =
+        "Create LaTeX code concisely summarizing the following information. Your raw output must be a compileable document, and you must use very small margins, line spacing, lists, and font size to cram everything into 1 page. Do not use math mode unless for equations: \n";
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.0-flash",
-            contents:
-                "Without explanation, concisely summarize the following text and generate LaTeX containing the concise facts into 1 page: " +
-                text,
+            contents: prompt + text,
         });
 
         return response.text!;
@@ -71,10 +71,15 @@ const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
     const texFile = path.join(tempDir, `${fileName}.tex`);
     const pdfFile = path.join(tempDir, `${fileName}.pdf`);
 
+    latexCode = latexCode
+        .split("\n")
+        .filter((line) => !line.startsWith("```"))
+        .join("\n");
+
+    console.log(latexCode);
+
     await fsx.ensureDir(tempDir);
     await fsx.writeFile(texFile, latexCode);
-
-    console.log("BRUHHHH");
 
     // Run pdflatex
     await new Promise<void>((resolve, reject) => {
@@ -85,14 +90,11 @@ const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
                     console.error("LaTeX compilation error:", stderr);
                     reject(stderr);
                 } else {
-                    console.log("PDF THING RESOLVED");
                     resolve();
                 }
             }
         );
     });
-
-    console.log("BRUHHHH 2222");
 
     const pdfBuffer = await fsx.readFile(pdfFile);
     await fsx.remove(texFile);
@@ -151,14 +153,26 @@ const extractTextFromImage = async (imagePath: string): Promise<string> => {
     return result.data.text;
 };
 
-const queryGeminiWithText = async (
-    text: string,
-    mode: string
-): Promise<string> => {
-    const prompt =
-        mode === "mindmap"
-            ? `Convert these notes into a structured mind map:\n\n${text}`
-            : `Summarize the following notes into bullet points:\n\n${text}`;
+const queryGeminiToMindMapNodes = async (text: string): Promise<any> => {
+    const prompt = `Extract key ideas from the following text as mind map nodes in JSON using the MindMup MapJS format.
+
+Text:
+${text}
+
+Return only the JSON. Example format:
+{
+  "title": "Main Topic",
+  "ideas": {
+    "1": {
+      "title": "Subtopic 1",
+      "ideas": {
+        "1": { "title": "Detail 1" },
+        "2": { "title": "Detail 2" }
+      }
+    },
+    "2": { "title": "Subtopic 2" }
+  }
+}`;
 
     const response = await axios.post(
         GEMINI_API_URL,
@@ -170,21 +184,9 @@ const queryGeminiWithText = async (
         }
     );
 
-    return (
-        response.data.candidates?.[0]?.content?.parts?.[0]?.text ||
-        "No output returned."
-    );
-};
-
-const generatePdfFromText = (text: string, outputPath: string) => {
-    return new Promise<void>((resolve) => {
-        const doc = new PDFDocument();
-        const writeStream = fs.createWriteStream(outputPath);
-        doc.pipe(writeStream);
-        doc.fontSize(12).text(text, { align: "left" });
-        doc.end();
-        writeStream.on("finish", resolve);
-    });
+    const rawText = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const cleanedText = rawText.replace(/```(?:json)?\n?|```/g, "").trim();
+    return JSON.parse(cleanedText);
 };
 
 app.post(
@@ -204,20 +206,17 @@ app.post(
             "../uploads",
             file.filename
         );
-        const outputPdfPath = path.join(__dirname, "output.pdf");
 
         try {
+            console.log("[STEP] Uploaded image path:", inputImagePath);
             const extractedText = await extractTextFromImage(inputImagePath);
-            const geminiResponse = await queryGeminiWithText(
-                extractedText,
-                mode
-            );
-            await generatePdfFromText(geminiResponse, outputPdfPath);
+            console.log("[STEP] Extracted text:", extractedText.slice(0, 200));
 
-            res.download(outputPdfPath, "output.pdf", () => {
-                fs.unlinkSync(inputImagePath);
-                fs.unlinkSync(outputPdfPath);
-            });
+            const mindMapJson = await queryGeminiToMindMapNodes(extractedText);
+            console.log("[STEP] Mind map JSON generated");
+
+            fs.unlinkSync(inputImagePath);
+            res.json({ type: "mindmap", data: mindMapJson });
         } catch (err) {
             console.error("Failed to generate MINDMAPPER:", err);
             res.status(500).send("Error generating content.");

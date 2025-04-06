@@ -1,12 +1,20 @@
 import { Outlet } from "react-router";
 import Navbar from "./Navbar";
-import { useAuth0 } from "@auth0/auth0-react";
 import Forbidden from "@/pages/Forbidden";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Layout = () => {
-    const { isAuthenticated } = useAuth0();
+    const { user, loading } = useAuth();
 
-    if (!isAuthenticated) {
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <span className="text-2xl">Loading...</span>
+            </div>
+        );
+    }
+
+    if (!user) {
         return <Forbidden />;
     }
 

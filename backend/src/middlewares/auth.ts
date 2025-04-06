@@ -47,7 +47,6 @@ export const authenticateUser = (
             algorithms: ["RS256"],
         },
         (err, decoded) => {
-            console.log("Decoded JWT:", decoded); // ✅ confirm it's working
             if (err) {
                 console.error("JWT verification error:", err);
 
@@ -64,8 +63,6 @@ export const authenticateUser = (
                 next(createHttpError(403, "Invalid token payload"));
                 return;
             }
-
-            console.log("Decoded JWT payload:", decoded); // ✅ confirm it's working
 
             req.user = {
                 sub: decoded.sub,

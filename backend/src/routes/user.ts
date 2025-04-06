@@ -1,7 +1,6 @@
 import { authenticateUser } from "@/middlewares/auth";
 import User from "@/models/User";
 import express, { Request, Response } from "express";
-import createHttpError from "http-errors";
 
 const userRouter = express.Router();
 

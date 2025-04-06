@@ -17,7 +17,7 @@ module.exports = {
         path: path.resolve(__dirname, "dist"),
         filename: (pathData) => {
             if (pathData.chunk.name === "background") {
-                return "background/index.js";
+                return "background/background.js";
             } else if (pathData.chunk.name === "contentScript") {
                 return "content/contentScript.js";
             } else if (pathData.chunk.name === "popup") {
