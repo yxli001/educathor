@@ -215,12 +215,11 @@ const Popup: React.FC = () => {
         id: (Date.now() + 1).toString(),
         text: response.message,
         sender: "bot",
-        hints: response.hints,
       };
 
       setMessages((prev) => [...prev, botMessage]);
 
-      // Store hints
+      // Store hints separately
       if (response.hints && response.hints.length > 0) {
         const newHints: Hint[] = response.hints.map((hint, index) => ({
           id: `hint-${Date.now()}-${index}`,
@@ -271,48 +270,6 @@ const Popup: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     handleSendMessage();
-  };
-
-  // Handle hint click
-  const handleHintClick = (hint: string) => {
-    // Add hint as a user message
-    const hintMessage: Message = {
-      id: Date.now().toString(),
-      text: `Hint: ${hint}`,
-      sender: "user",
-    };
-    setMessages((prev) => [...prev, hintMessage]);
-    setInputValue("");
-
-    // Show loading state
-    setIsLoading(true);
-
-    // Send hint to API
-    apiService
-      .sendChatMessage(`Please explain this hint: ${hint}`, pageContent)
-      .then((response) => {
-        // Add bot message to chat
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: response.message,
-          sender: "bot",
-          hints: response.hints,
-        };
-        setMessages((prev) => [...prev, botMessage]);
-      })
-      .catch((error) => {
-        console.error("Error sending hint:", error);
-        // Add error message to chat
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: "Sorry, I encountered an error. Please try again.",
-          sender: "bot",
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
   };
 
   // Render authentication required message
@@ -370,24 +327,35 @@ const Popup: React.FC = () => {
                 <div className="message-content">
                   <ReactMarkdown>{message.text}</ReactMarkdown>
                 </div>
-                {message.hints && message.hints.length > 0 && (
-                  <div className="hints-container">
-                    <h4>Hints:</h4>
-                    <div className="hints-buttons">
-                      {message.hints.map((hint, index) => (
-                        <button
-                          key={index}
-                          className="hint-button"
-                          onClick={() => handleHintClick(hint)}
-                        >
-                          Hint {index + 1}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
+
+            {/* Display hints separately */}
+            {hints.length > 0 && (
+              <div className="hints-container">
+                <h4>Available Hints:</h4>
+                <div className="hints-buttons">
+                  {hints.map((hint) => (
+                    <button
+                      key={hint.id}
+                      className="hint-button"
+                      onClick={() => handleRevealHint(hint.id)}
+                    >
+                      {hint.isRevealed ? "Hide Hint" : "Reveal Hint"}
+                    </button>
+                  ))}
+                </div>
+                {hints.map(
+                  (hint) =>
+                    hint.isRevealed && (
+                      <div key={`text-${hint.id}`} className="hint-text">
+                        {hint.text}
+                      </div>
+                    )
+                )}
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
         )}

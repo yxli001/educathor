@@ -18,6 +18,22 @@ body {
   position: relative;
 }
 
+/* Header styles */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #4a6cf7;
+  color: white;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
 /* Close button */
 .close-button {
   position: absolute;
@@ -123,9 +139,10 @@ body {
   flex-direction: column;
   height: 100%;
   background-color: white;
+  overflow-y: auto;
 }
 
-.messages-container {
+.messages {
   flex: 1;
   overflow-y: auto;
   padding: 15px;
@@ -142,14 +159,14 @@ body {
   position: relative;
 }
 
-.user-message {
+.message.user {
   align-self: flex-end;
   background-color: #4a6cf7;
   color: white;
   border-bottom-right-radius: 4px;
 }
 
-.bot-message {
+.message.bot {
   align-self: flex-start;
   background-color: #f0f2ff;
   color: #333;
@@ -243,40 +260,36 @@ body {
   color: #666;
 }
 
-.hint-item {
-  margin: 5px 0;
-  padding: 5px;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+.hints-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.hint-text {
-  padding: 8px;
-  color: #444;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.reveal-hint-button {
-  width: 100%;
-  padding: 8px;
-  background-color: #4a90e2;
+.hint-button {
+  background-color: #4a6cf7;
   color: white;
   border: none;
+  padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
   transition: background-color 0.2s;
 }
 
-.reveal-hint-button:hover {
-  background-color: #357abd;
+.hint-button:hover {
+  background-color: #3a5ce5;
 }
 
-.reveal-hint-button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
+.hint-text {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f0f2ff;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  border-left: 3px solid #4a6cf7;
 }
 
 /* Markdown styling */
