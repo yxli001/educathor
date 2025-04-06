@@ -4,11 +4,11 @@
     "main": "./src/server.ts",
     "scripts": {
         "dev": "nodemon src/server.ts",
-        "build": "npm install && tsc --outDir dist",
-        "start": "node dist/server.js"
+        "build": "tsc",
+        "start": "node -r module-alias/register dist/server.js"
     },
     "_moduleAliases": {
-        "@": "src"
+        "@": "dist"
     },
     "keywords": [],
     "author": "",

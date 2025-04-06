@@ -10,6 +10,7 @@ import PDFDocument from "pdfkit";
 import { exec } from "child_process";
 import upload from "@/middlewares/upload";
 import path from "path";
+import latex from "node-latex";
 
 const cheatSheetRouter = Router();
 
@@ -51,7 +52,7 @@ const refineLatex = async (
     columns: number,
     pages: number
 ): Promise<string> => {
-    const prompt = `Modify this LaTeX code to have ${columns} column(s) and ensure that margins, line spacing, and font size is small so that it fits in ${pages} page(s): \n`;
+    const prompt = `Format this LaTeX code to have ${columns} column(s) and ensure that margins, line spacing, and font size is small so that it fits in ${pages} page(s): \n`;
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.0-flash",
@@ -86,7 +87,11 @@ const refineLatex = async (
         throw new Error("Error refining cheat sheet.");
     }
 };
-const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
+const generatePdfFromLatexWithExec = async (
+    // UNUSED, DO NOT USE THIS, BAD CODE, WONT WORK ON ALL DEVICES
+    latexCode: string,
+    fileName: string
+) => {
     const tempDir = path.join(__dirname, "/../tmp");
     const texFile = path.join(tempDir, `${fileName}.tex`);
     const pdfFile = path.join(tempDir, `${fileName}.pdf`);
@@ -116,6 +121,20 @@ const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
     await fsx.remove(path.join(tempDir, `${fileName}.log`));
     return pdfBuffer;
 };
+
+const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
+    // THIS ONE IS BETTER, LEAVES NO TRACE AND WORKS ON ALL DEVICES
+    return new Promise((resolve, reject) => {
+        const pdfStream = latex(latexCode);
+
+        const chunks: Buffer[] = [];
+
+        pdfStream.on("data", (chunk: Buffer) => chunks.push(chunk));
+        pdfStream.on("error", reject);
+        pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
+    });
+};
+
 cheatSheetRouter.post(
     "/",
     upload.array("files"),
