@@ -9,7 +9,9 @@
  */
 
 // EducaThor Hub URL (if needed)
-export const EDUCA_THOR_HUB_URL = "http://localhost:5173";
+export const EDUCA_THOR_HUB_URL = "https://educathor.tech";
+// export const EDUCA_THOR_HUB_URL = "http://localhost:5173";
 
-export const EDUCA_THOR_API_URL = "http://localhost:5174";
+export const EDUCA_THOR_API_URL = "https://educathor.onrender.com";
+// export const EDUCA_THOR_API_URL = "http://localhost:5174";
 // Other API keys can be added here as needed
