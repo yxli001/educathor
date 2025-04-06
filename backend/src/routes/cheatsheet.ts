@@ -159,7 +159,6 @@ const generatePdfFromLatexWithExec = async (
     return pdfBuffer;
 };  */
 
-/*
 const generatePdfFromLatexUsingLib = async (
     latexCode: string,
     fileName: string
@@ -175,7 +174,6 @@ const generatePdfFromLatexUsingLib = async (
         pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
     });
 };
-*/
 
 interface ConvertOptions {
     output?: string;
@@ -257,7 +255,7 @@ cheatSheetRouter.post(
             await fsx.ensureDir(tempDir);   
             await fsx.writeFile(texFile, latexRefined);*/
 
-            const pdfBuffer = await generatePdfFromLatex(
+            const pdfBuffer = await generatePdfFromLatexUsingLib(
                 latexRefined,
                 `cheatsheet_${Date.now()}`
             );
