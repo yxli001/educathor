@@ -124,4 +124,47 @@ canvasRouter.post(
     }
 );
 
+canvasRouter.delete(
+    "/:fileId",
+    authenticateUser,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { fileId } = req.params;
+
+            const user = await User.findOne({ uid: req.user!.sub });
+
+            if (!user) {
+                next(createHttpError(404, "User not found"));
+                return;
+            }
+
+            const file = user.files.id(fileId);
+
+            if (!file) {
+                next(createHttpError(404, "File not found"));
+                return;
+            }
+
+            const bucket = storage.bucket();
+            const fileName = file.url
+                .split("/")
+                .pop()
+                ?.split("?")[0]
+                .split("/")[1]; // Extract file name from URL
+
+            if (fileName) {
+                await bucket.file(`uploads/${fileName}`).delete(); // Delete file from Firebase
+            }
+
+            await file.deleteOne(); // Remove file from MongoDB
+            await user.save();
+
+            res.status(200).json({ message: "File deleted successfully" });
+        } catch (error) {
+            console.error("Error deleting file:", error);
+            next(createHttpError(500, "Failed to delete file"));
+        }
+    }
+);
+
 export default canvasRouter;

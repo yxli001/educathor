@@ -6,4 +6,6 @@
 /uploads
 /tmp
 
+/src/tmp
+
 /eng.traineddata

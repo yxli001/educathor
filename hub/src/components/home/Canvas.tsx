@@ -107,12 +107,29 @@ export const Canvas: React.FC<CanvasProps> = ({
         setMaxZIndex((prev) => prev + 1);
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (selectedFileId) {
-            setFiles((prev) =>
-                prev.filter((file) => file.id !== selectedFileId)
-            );
-            setSelectedFileId(null);
+            try {
+                const token = await getAccessTokenSilently();
+
+                await axios.delete(
+                    `http://localhost:5174/api/canvas/${selectedFileId}`,
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                        withCredentials: true,
+                    }
+                );
+
+                setFiles((prev) =>
+                    prev.filter((file) => file.id !== selectedFileId)
+                );
+                setSelectedFileId(null);
+            } catch (error) {
+                console.error("Failed to delete file:", error);
+                alert("Failed to delete file. Please try again.");
+            }
         }
     };
 

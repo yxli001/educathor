@@ -91,7 +91,7 @@ mindMapperRouter.post("/", upload.single("image"), async (req, res) => {
         return;
     }
 
-    const inputImagePath = path.join(__dirname, "../uploads", file.filename);
+    const inputImagePath = path.resolve("uploads", file.filename);
 
     try {
         const extractedText = await extractTextFromImage(inputImagePath);
