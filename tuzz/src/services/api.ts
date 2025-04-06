@@ -6,7 +6,7 @@ import { GEMINI_API_KEY, EDUCA_THOR_HUB_URL } from "../config/keys";
 
 // Constants
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+  "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent";
 const API_ENDPOINTS = {
   AUTH: `${EDUCA_THOR_HUB_URL}/auth`,
   ANALYZE: `${EDUCA_THOR_HUB_URL}/api/analyze`,
@@ -55,6 +55,10 @@ export class ApiService {
   constructor() {
     // Load tokens from storage on initialization
     this.loadTokens();
+    console.log(
+      "API Service initialized with Gemini API Key:",
+      this.geminiApiKey ? "Key is set" : "Key is missing"
+    );
   }
 
   // Load authentication tokens from storage
@@ -128,7 +132,9 @@ export class ApiService {
       );
 
       if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`Gemini API error: ${response.status}`, errorText);
+        throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
       }
 
       const geminiResponse: GeminiResponse = await response.json();
@@ -159,6 +165,11 @@ export class ApiService {
     highlightedText?: string
   ): Promise<ChatResponse> {
     try {
+      console.log(
+        "Sending chat message to Gemini API with key:",
+        this.geminiApiKey ? "Key is set" : "Key is missing"
+      );
+
       // Prepare the prompt for Gemini
       const prompt = `
         You are TuzzAI, an educational assistant that helps students understand homework questions without giving direct answers.
@@ -180,6 +191,8 @@ export class ApiService {
         2. [Second hint]
         3. [Third hint if applicable]
       `;
+
+      console.log("Making API request to Gemini...");
 
       // Call Gemini API
       const response = await fetch(
@@ -204,10 +217,15 @@ export class ApiService {
       );
 
       if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`Gemini API error: ${response.status}`, errorText);
+        throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
       }
 
+      console.log("Received response from Gemini API");
+
       const geminiResponse: GeminiResponse = await response.json();
+      console.log("Parsed Gemini response:", geminiResponse);
 
       // Extract the text from the response
       const responseText =
