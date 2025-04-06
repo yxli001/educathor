@@ -380,8 +380,6 @@ const Popup: React.FC = () => {
       <div className="header">
         <div className="header-left">
           <h1>TuzzAI</h1>
-        </div>
-        <div className="header-buttons">
           <button
             className="screenshot-button"
             onClick={screenshot ? handleShowScreenshot : capturePageContent}
@@ -393,6 +391,8 @@ const Popup: React.FC = () => {
           >
             {screenshot ? "📸" : "📷"}
           </button>
+        </div>
+        <div className="header-buttons">
           <button className="close-button" onClick={handleClosePopup}>
             ×
           </button>
