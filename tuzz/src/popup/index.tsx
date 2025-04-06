@@ -40,6 +40,8 @@ const Popup: React.FC = () => {
   const [highlightedText, setHighlightedText] = useState<string>("");
   const [hints, setHints] = useState<Hint[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
+  const [showScreenshotModal, setShowScreenshotModal] =
+    useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -178,21 +180,43 @@ const Popup: React.FC = () => {
       });
 
       if (tab.id) {
+        console.log("Capturing content from tab:", tab.id, "URL:", tab.url);
+
         // Execute content script to get page content
         const [{ result }] = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           func: () => {
             // Extract text content from the page
             const textContent = document.body.innerText;
-            return textContent.substring(0, 5000); // Limit to 5000 characters
+            console.log("Extracted text content length:", textContent.length);
+            return textContent.substring(0, 30000); // Limit to 30000 characters
           },
         });
 
-        setPageContent(result as string);
+        const extractedText = result as string;
+        console.log(
+          "Extracted text preview:",
+          extractedText.substring(0, 200) + "..."
+        );
+        setPageContent(extractedText);
 
         // Capture screenshot
-        const dataUrl = await chrome.tabs.captureVisibleTab();
-        setScreenshot(dataUrl);
+        console.log("Capturing screenshot...");
+        try {
+          const dataUrl = await chrome.tabs.captureVisibleTab();
+          if (dataUrl) {
+            console.log("Screenshot captured successfully");
+            console.log("Screenshot size:", dataUrl.length);
+            console.log("Screenshot format:", dataUrl.substring(0, 30));
+            setScreenshot(dataUrl);
+          } else {
+            console.error(
+              "Failed to capture screenshot - dataUrl is null or undefined"
+            );
+          }
+        } catch (screenshotError) {
+          console.error("Error capturing screenshot:", screenshotError);
+        }
       }
     } catch (error) {
       console.error("Error capturing page content:", error);
@@ -318,6 +342,18 @@ const Popup: React.FC = () => {
     handleSendMessage();
   };
 
+  // Handle showing screenshot modal
+  const handleShowScreenshot = () => {
+    console.log("Showing screenshot modal");
+    setShowScreenshotModal(true);
+  };
+
+  // Handle closing screenshot modal
+  const handleCloseScreenshotModal = () => {
+    console.log("Closing screenshot modal");
+    setShowScreenshotModal(false);
+  };
+
   // Render authentication required message
   if (REQUIRE_AUTH && !isAuthenticated) {
     return (
@@ -342,10 +378,25 @@ const Popup: React.FC = () => {
   return (
     <div className="popup-container" ref={popupRef}>
       <div className="header">
-        <h1>TuzzAI</h1>
-        <button className="close-button" onClick={handleClosePopup}>
-          ×
-        </button>
+        <div className="header-left">
+          <h1>TuzzAI</h1>
+        </div>
+        <div className="header-buttons">
+          <button
+            className="screenshot-button"
+            onClick={screenshot ? handleShowScreenshot : capturePageContent}
+            title={
+              screenshot
+                ? "View captured screenshot"
+                : "Capture page screenshot"
+            }
+          >
+            {screenshot ? "📸" : "📷"}
+          </button>
+          <button className="close-button" onClick={handleClosePopup}>
+            ×
+          </button>
+        </div>
       </div>
 
       <div className="chat-container">
@@ -431,6 +482,34 @@ const Popup: React.FC = () => {
           {isLoading ? "..." : "Send"}
         </button>
       </div>
+
+      {/* Screenshot Modal */}
+      {showScreenshotModal && screenshot && (
+        <div className="screenshot-modal">
+          <div className="screenshot-modal-content">
+            <div className="screenshot-modal-header">
+              <h3>Captured Screenshot</h3>
+              <button
+                className="close-modal-button"
+                onClick={handleCloseScreenshotModal}
+              >
+                ×
+              </button>
+            </div>
+            <div className="screenshot-container">
+              <img
+                src={screenshot}
+                alt="Captured screenshot"
+                className="screenshot-image"
+              />
+            </div>
+            <div className="screenshot-info">
+              <p>Screenshot size: {screenshot.length} characters</p>
+              <p>Format: {screenshot.substring(0, 30)}...</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

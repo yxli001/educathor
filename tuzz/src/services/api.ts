@@ -101,6 +101,13 @@ export class ApiService {
     screenshot: string
   ): Promise<AnalysisResponse> {
     try {
+      console.log("Analyzing page with content length:", content.length);
+      console.log("Screenshot present:", !!screenshot);
+      if (screenshot) {
+        console.log("Screenshot size:", screenshot.length);
+        console.log("Screenshot format:", screenshot.substring(0, 30));
+      }
+
       // Call backend API
       const response = await fetch(API_ENDPOINTS.ANALYZE, {
         method: "POST",
@@ -119,7 +126,9 @@ export class ApiService {
         throw new Error(`API error: ${response.status} - ${errorText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log("Analysis response received:", data);
+      return data;
     } catch (error) {
       console.error("Error analyzing page:", error);
       throw error;

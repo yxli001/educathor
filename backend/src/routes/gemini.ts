@@ -206,15 +206,89 @@ const analyzeHandler: RequestHandler = async (req, res) => {
       return;
     }
 
+    console.log("Received content length:", content.length);
+    console.log("Screenshot present:", !!screenshot);
+    if (screenshot) {
+      console.log("Screenshot size:", screenshot.length);
+      console.log("Screenshot format:", screenshot.substring(0, 30));
+    }
+
     // Prepare the prompt for Gemini
     const prompt = `
-      Analyze the following homework content and identify:
-      1. The main questions or problems
-      2. The key concepts being tested
-      3. Any relevant context that would help explain the material
+      You are analyzing a homework question. I've provided both text content and a screenshot image.
       
-      Content: ${content.substring(0, 30000)} // Increase from 3000
+      IMPORTANT INSTRUCTIONS:
+      1. CAREFULLY EXAMINE THE SCREENSHOT IMAGE FIRST. Look for:
+         - Multiple choice options (A, B, C, D, etc.)
+         - Equations, formulas, or mathematical expressions
+         - Graphs, diagrams, or visual aids
+         - Any text that might not be in the extracted content
+      
+      2. Then analyze the text content to understand the question and context.
+      
+      3. Provide a comprehensive analysis that includes:
+         - The main question or problem
+         - ALL multiple choice options (if present in either the image or text)
+         - Key concepts being tested
+         - Relevant context that would help explain the material
+      
+      If you see multiple choice options in the image that aren't in the text, you MUST include them in your analysis.
+      
+      Content: ${content.substring(0, 30000)}
     `;
+
+    console.log("Sending prompt to Gemini:", prompt.substring(0, 200) + "...");
+
+    // Prepare request body with screenshot if available
+    let requestBody;
+
+    if (screenshot) {
+      // Extract the base64 data from the data URL
+      const base64Data = screenshot.split(",")[1];
+      console.log("Base64 data length:", base64Data.length);
+
+      requestBody = {
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  mimeType: "image/png",
+                  data: base64Data,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048, // Increased to allow for more detailed responses
+        },
+      };
+    } else {
+      requestBody = {
+        contents: [
+          {
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        },
+      };
+    }
+
+    console.log("Calling Gemini API with image:", !!screenshot);
+    console.log(
+      "Request body structure:",
+      JSON.stringify(requestBody).substring(0, 200) + "..."
+    );
 
     // Call Gemini API
     const response = await fetch(
@@ -224,25 +298,7 @@ const analyzeHandler: RequestHandler = async (req, res) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                ...(screenshot
-                  ? [
-                      {
-                        inlineData: {
-                          mimeType: "image/png",
-                          data: screenshot.split(",")[1], // Base64 image data
-                        },
-                      },
-                    ]
-                  : []),
-              ],
-            },
-          ],
-        }),
+        body: JSON.stringify(requestBody),
       }
     );
 
@@ -254,12 +310,18 @@ const analyzeHandler: RequestHandler = async (req, res) => {
     }
 
     const geminiResponse: GeminiResponse = await response.json();
+    console.log("Gemini API response received");
+
     const analysisText =
       geminiResponse.candidates[0]?.content.parts[0]?.text || "";
+    console.log("Analysis text:", analysisText.substring(0, 200) + "...");
 
     // Parse the response to extract questions and context
     const questions = extractQuestions(analysisText);
     const context = extractContext(analysisText);
+
+    console.log("Extracted questions:", questions);
+    console.log("Extracted context:", context.substring(0, 200) + "...");
 
     res.json({
       questions,
