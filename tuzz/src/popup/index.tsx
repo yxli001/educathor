@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 // Constants
 const EDUCA_THOR_HUB_URL = "http://localhost:5173";
 // Set this to true to enable authentication
-const REQUIRE_AUTH = true;
+const REQUIRE_AUTH = false;
 
 // Types
 interface Message {
