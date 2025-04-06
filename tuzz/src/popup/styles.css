@@ -26,18 +26,28 @@
   align-items: center;
 }
 
+/* Screenshot button container */
+.screenshot-button-container {
+  position: absolute;
+  top: 50px;
+  right: 15px;
+  z-index: 10;
+}
+
 .screenshot-button {
   background: none;
   border: none;
   font-size: 20px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 8px;
+  border-radius: 50%;
   transition: background-color 0.2s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  background-color: white;
 }
 
 .screenshot-button:hover {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 .close-button {
