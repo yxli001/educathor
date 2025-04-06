@@ -7,9 +7,6 @@
  * IMPORTANT: Do not commit the actual keys.ts file with real API keys to version control.
  */
 
-// Gemini API Key
-export const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
-
 // EducaThor Hub URL (if needed)
 export const EDUCA_THOR_HUB_URL = "http://localhost:5173";
 
