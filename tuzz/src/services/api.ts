@@ -5,8 +5,8 @@
 import { GEMINI_API_KEY, EDUCA_THOR_HUB_URL } from "../config/keys";
 
 // Constants
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent";
+const API_BASE_URL = "https://generativelanguage.googleapis.com/v1";
+const MODEL_NAME = "gemini-2.0-flash";
 const API_ENDPOINTS = {
   AUTH: `${EDUCA_THOR_HUB_URL}/auth`,
   ANALYZE: `${EDUCA_THOR_HUB_URL}/api/analyze`,
@@ -33,8 +33,11 @@ export interface AnalysisResponse {
 }
 
 export interface ChatResponse {
-  message: string;
-  hints: string[];
+  candidates: {
+    content: {
+      parts: { text: string }[];
+    };
+  }[];
 }
 
 export interface GeminiResponse {
@@ -50,47 +53,48 @@ export interface GeminiResponse {
 // API Service
 export class ApiService {
   private token: string | null = null;
-  private geminiApiKey: string = GEMINI_API_KEY;
+  private isAuthenticatedFlag: boolean = false;
 
   constructor() {
-    // Load tokens from storage on initialization
-    this.loadTokens();
+    this.loadToken();
     console.log(
       "API Service initialized with Gemini API Key:",
-      this.geminiApiKey ? "Key is set" : "Key is missing"
+      this.token ? "Key is set" : "Key is missing"
     );
   }
 
-  // Load authentication tokens from storage
-  private async loadTokens(): Promise<void> {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(["tuzzai_auth_token"], (result) => {
-        this.token = result.tuzzai_auth_token || null;
-        resolve();
-      });
+  // Load token from storage
+  private loadToken(): void {
+    chrome.storage.local.get(["tuzzai_auth_token"], (result) => {
+      if (result.tuzzai_auth_token) {
+        this.token = result.tuzzai_auth_token;
+        this.isAuthenticatedFlag = true;
+      }
     });
+  }
+
+  // Check if user is authenticated
+  public isAuthenticated(): boolean {
+    return this.isAuthenticatedFlag;
+  }
+
+  // Get authentication URL
+  public getAuthUrl(): string {
+    return API_ENDPOINTS.AUTH;
   }
 
   // Set authentication token
   public setToken(token: string): void {
     this.token = token;
+    this.isAuthenticatedFlag = true;
     chrome.storage.local.set({ tuzzai_auth_token: token });
   }
 
   // Clear authentication token
   public clearToken(): void {
     this.token = null;
+    this.isAuthenticatedFlag = false;
     chrome.storage.local.remove("tuzzai_auth_token");
-  }
-
-  // Check if user is authenticated
-  public isAuthenticated(): boolean {
-    return REQUIRE_AUTH ? !!this.token : true;
-  }
-
-  // Get authentication URL
-  public getAuthUrl(): string {
-    return API_ENDPOINTS.AUTH;
   }
 
   // Analyze page content using Gemini API
@@ -111,7 +115,7 @@ export class ApiService {
 
       // Call Gemini API
       const response = await fetch(
-        `${GEMINI_API_URL}?key=${this.geminiApiKey}`,
+        `${API_BASE_URL}/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
@@ -161,86 +165,104 @@ export class ApiService {
   // Send chat message using Gemini API
   public async sendChatMessage(
     message: string,
-    context: string,
+    pageContent?: string,
     highlightedText?: string
-  ): Promise<ChatResponse> {
+  ): Promise<{ message: string; hints?: string[] }> {
     try {
-      console.log(
-        "Sending chat message to Gemini API with key:",
-        this.geminiApiKey ? "Key is set" : "Key is missing"
-      );
+      console.log("Sending chat message to Gemini API:", message);
 
-      // Prepare the prompt for Gemini
-      const prompt = `
-        You are TuzzAI, an educational assistant that helps students understand homework questions without giving direct answers.
-        
-        Context from the student's homework: ${context.substring(0, 2000)}
-        
-        ${highlightedText ? `Highlighted text: ${highlightedText}` : ""}
-        
-        Student's question: ${message}
-        
-        IMPORTANT: DO NOT solve the problem or provide the answer directly. Instead, provide:
-        1. A helpful explanation of the concepts involved
-        2. 2-3 hints that guide the student toward the answer without giving it directly
-        
-        Format your response as:
-        EXPLANATION: [Your explanation here]
-        HINTS:
-        1. [First hint]
-        2. [Second hint]
-        3. [Third hint if applicable]
-      `;
+      // Prepare the prompt with context
+      let prompt = `You are TuzzAI, a helpful homework assistant. The user is asking: "${message}"`;
 
-      console.log("Making API request to Gemini...");
+      // Add page content if available
+      if (pageContent) {
+        prompt += `\n\nContext from the current page: ${pageContent.substring(
+          0,
+          1000
+        )}...`;
+      }
 
-      // Call Gemini API
+      // Add highlighted text if available
+      if (highlightedText) {
+        prompt += `\n\nHighlighted text from the user: "${highlightedText}"`;
+      }
+
+      // Add instructions for the AI
+      prompt += `\n\nPlease provide helpful hints and explanations without giving direct answers. 
+      If the user has highlighted text, focus on that specific question or problem.
+      If the user mentions a specific question number or section, prioritize that in your response.
+      Your goal is to help the user understand the concept, not to solve the problem for them.`;
+
+      // Prepare the request body
+      const requestBody = {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE",
+          },
+        ],
+      };
+
+      // Make the API request
       const response = await fetch(
-        `${GEMINI_API_URL}?key=${this.geminiApiKey}`,
+        `${API_BASE_URL}/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
+      // Check if the response is successful
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Gemini API error: ${response.status}`, errorText);
-        throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+        const errorData = await response.json();
+        console.error("Gemini API error:", errorData);
+        throw new Error(`API request failed with status ${response.status}`);
       }
 
-      console.log("Received response from Gemini API");
+      // Parse the response
+      const data = (await response.json()) as ChatResponse;
+      console.log("Gemini API response:", data);
 
-      const geminiResponse: GeminiResponse = await response.json();
-      console.log("Parsed Gemini response:", geminiResponse);
+      // Extract the message from the response
+      const messageText =
+        data.candidates[0]?.content.parts[0]?.text || "No response from AI";
 
-      // Extract the text from the response
-      const responseText =
-        geminiResponse.candidates[0]?.content.parts[0]?.text || "";
-
-      // Parse the response to extract message and hints
-      const { message: botMessage, hints } =
-        this.parseChatResponse(responseText);
+      // Extract hints from the message (if any)
+      const hints = this.extractHints(messageText);
 
       return {
-        message: botMessage,
+        message: messageText,
         hints,
       };
     } catch (error) {
-      console.error("Error sending message to Gemini:", error);
+      console.error("Error sending chat message:", error);
       throw error;
     }
   }
@@ -279,32 +301,18 @@ export class ApiService {
     return paragraphs[0] || analysisText.substring(0, 500);
   }
 
-  // Helper method to parse Gemini's chat response
-  private parseChatResponse(responseText: string): {
-    message: string;
-    hints: string[];
-  } {
-    // Extract the explanation
-    const explanationMatch = responseText.match(
-      /EXPLANATION:([\s\S]*?)(?=HINTS:|$)/i
-    );
-    const message = explanationMatch
-      ? explanationMatch[1].trim()
-      : responseText;
+  // Extract hints from the AI response
+  private extractHints(message: string): string[] {
+    // Simple hint extraction - look for lines starting with "Hint:"
+    const hintRegex = /Hint:\s*([^\n]+)/g;
+    const hints: string[] = [];
+    let match;
 
-    // Extract the hints
-    const hintsMatch = responseText.match(/HINTS:([\s\S]*?)$/i);
-    let hints: string[] = [];
-
-    if (hintsMatch) {
-      const hintsText = hintsMatch[1];
-      hints = hintsText
-        .split("\n")
-        .filter((line) => /^\d+\./.test(line.trim()))
-        .map((line) => line.replace(/^\d+\.\s*/, "").trim());
+    while ((match = hintRegex.exec(message)) !== null) {
+      hints.push(match[1].trim());
     }
 
-    return { message, hints };
+    return hints;
   }
 }
 
