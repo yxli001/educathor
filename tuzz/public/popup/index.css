@@ -1,11 +1,7 @@
 /* Popup styles */
 body {
-  width: 25vw; /* 25% of viewport width */
-  height: 40vh; /* 40% of viewport height */
-  min-width: 200px; /* Minimum width to ensure readability */
-  min-height: 300px; /* Minimum height to ensure usability */
-  max-width: 400px; /* Maximum width to prevent it from getting too large */
-  max-height: 600px; /* Maximum height to prevent it from getting too large */
+  width: 500px;
+  height: 600px;
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
