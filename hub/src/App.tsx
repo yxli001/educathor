@@ -10,10 +10,19 @@ import { Canvas } from "./components/home/Canvas";
 import { useState } from "react";
 
 import { FileWithPosition } from "./types/file";
+import { useAuth0 } from "@auth0/auth0-react";
 
 const App = () => {
     const [files, setFiles] = useState<FileWithPosition[]>([]);
     const [maxZIndex, setMaxZIndex] = useState(1);
+
+    const { isLoading } = useAuth0();
+
+    if (isLoading) {
+        return (
+            <div className="text-center pt-20">Loading authentication...</div>
+        );
+    }
 
     return (
         <AuthProvider>
