@@ -1,1 +1,1 @@
-# educathor
+# EducaThor
