@@ -63,7 +63,7 @@ const Landing = () => {
                     </h3>
                     <p className="text-gray-600">
                         Upload notes, get a condensed, space-optimized PDF.
-                        Perfect for quick reviews.
+                        Perfect for quick reviews and acing your exams.
                     </p>
                 </div>
             </section>
