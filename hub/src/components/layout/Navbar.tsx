@@ -69,13 +69,18 @@ const Navbar = () => {
                         </div>
                         <button
                             className="w-full px-4 py-2 text-left text-red-600 cursor-pointer hover:bg-gray-100"
-                            onClick={() =>
+                            onClick={() => {
                                 logout({
                                     logoutParams: {
                                         returnTo: window.location.origin,
                                     },
-                                })
-                            }
+                                });
+
+                                window.postMessage(
+                                    { type: "educathor-logout" },
+                                    "*"
+                                );
+                            }}
                         >
                             Log out
                         </button>
