@@ -9,6 +9,8 @@ const PAGE_DATA_STORAGE_KEY = "tuzzai_page_data";
 
 // Store for the latest analyzed page data
 let latestPageData: any = null;
+// Store for the popup window ID
+let popupWindowId: number | null = null;
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -81,6 +83,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     return true; // Indicates we'll send a response asynchronously
   }
+
+  // Handle close popup request
+  if (message.type === "CLOSE_POPUP") {
+    // Get the current window
+    chrome.windows.getCurrent((window) => {
+      if (window.id !== undefined) {
+        // Close the popup window
+        chrome.windows.remove(window.id);
+      }
+    });
+
+    sendResponse({ success: true });
+  }
 });
 
 // Listen for tab updates to analyze new pages
@@ -101,6 +116,25 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         console.error("Error injecting content script:", error);
       });
   }
+});
+
+// Listen for extension icon click
+chrome.action.onClicked.addListener(() => {
+  // Create a popup window
+  chrome.windows.create(
+    {
+      url: "popup/index.html",
+      type: "popup",
+      width: 500,
+      height: 600,
+      focused: true,
+    },
+    (window) => {
+      if (window && window.id !== undefined) {
+        popupWindowId = window.id;
+      }
+    }
+  );
 });
 
 // Initialize the background script

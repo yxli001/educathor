@@ -52,6 +52,18 @@ const Popup: React.FC = () => {
     }
     capturePageContent();
     getHighlightedText();
+
+    // Prevent the popup from closing when clicking outside
+    document.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
+    // Clean up event listener
+    return () => {
+      document.removeEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+    };
   }, []);
 
   // Scroll to bottom of messages
@@ -80,6 +92,12 @@ const Popup: React.FC = () => {
     };
 
     chrome.runtime.onMessage.addListener(authListener);
+  };
+
+  // Handle closing the popup
+  const handleClosePopup = () => {
+    // Close the popup by sending a message to the background script
+    chrome.runtime.sendMessage({ type: "CLOSE_POPUP" });
   };
 
   // Capture page content
@@ -227,6 +245,9 @@ const Popup: React.FC = () => {
 
   return (
     <div className="popup-container">
+      <button className="close-button" onClick={handleClosePopup}>
+        ×
+      </button>
       {!isAuthenticated && REQUIRE_AUTH ? (
         <div className="auth-container">
           <h2>Welcome to TuzzAI</h2>
