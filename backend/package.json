@@ -38,6 +38,7 @@
         "node-latex": "^3.1.0",
         "pdf-parse": "^1.1.1",
         "pdfkit": "^0.16.0",
+        "pdflatex": "^0.0.1",
         "react-d3-tree": "^3.6.6",
         "react-mindmap": "^2.1.6",
         "tesseract.js": "^6.0.0",
