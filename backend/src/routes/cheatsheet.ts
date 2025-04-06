@@ -213,7 +213,7 @@ cheatSheetRouter.post(
             /*
             const tempDir = path.join(__dirname, "/../../tmp");
             const texFile = path.join(tempDir, `temp.tex`);
-            await fsx.ensureDir(tempDir);
+            await fsx.ensureDir(tempDir);   
             await fsx.writeFile(texFile, latexRefined);*/
 
             const pdfBuffer = await generatePdfFromLatex(
