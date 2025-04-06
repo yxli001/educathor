@@ -4,11 +4,11 @@ TuzzAI is a Chrome extension that helps students understand homework questions w
 
 ## Features
 
-- Analyze homework questions and identify key concepts
-- Provide explanations without giving direct answers
-- Offer hints that guide students toward solutions
-- Highlight text for specific questions
-- Interactive chat interface for asking questions
+-   Analyze homework questions and identify key concepts
+-   Provide explanations without giving direct answers
+-   Offer hints that guide students toward solutions
+-   Highlight text for specific questions
+-   Interactive chat interface for asking questions
 
 ## Setup Instructions
 
@@ -17,26 +17,20 @@ TuzzAI is a Chrome extension that helps students understand homework questions w
 1. Clone the repository
 2. Install dependencies:
 
-   ```
-   npm install
-   ```
+    ```
+    npm install
+    ```
 
-3. Set up your API keys:
+3. Build the extension:
 
-   - Copy `src/config/keys.sample.ts` to `src/config/keys.ts`
-   - Replace `YOUR_GEMINI_API_KEY_HERE` with your actual Gemini API key
-   - You can get a Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+    ```
+    npm run build
+    ```
 
-4. Build the extension:
-
-   ```
-   npm run build
-   ```
-
-5. Load the extension in Chrome:
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked" and select the `dist` folder
+4. Load the extension in Chrome:
+    - Open Chrome and go to `chrome://extensions/`
+    - Enable "Developer mode"
+    - Click "Load unpacked" and select the `dist` folder
 
 ### For Users
 
@@ -46,26 +40,26 @@ TuzzAI is a Chrome extension that helps students understand homework questions w
 
 ## Development
 
-- `npm run dev` - Build the extension in development mode with watch
-- `npm run build` - Build the extension for production
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
+-   `npm run dev` - Build the extension in development mode with watch
+-   `npm run build` - Build the extension for production
+-   `npm run lint` - Run ESLint
+-   `npm run type-check` - Run TypeScript type checking
 
 ## Architecture
 
 The extension consists of the following components:
 
-- **Popup**: The user interface for interacting with TuzzAI
-- **Content Script**: Analyzes the current page content
-- **Background Script**: Handles authentication and data processing
-- **API Service**: Communicates with the Gemini API
+-   **Popup**: The user interface for interacting with TuzzAI
+-   **Content Script**: Analyzes the current page content
+-   **Background Script**: Handles authentication and data processing
+-   **API Service**: Communicates with the Gemini API
 
 ## API Usage
 
 The extension uses the following APIs:
 
-- **Gemini API**: For analyzing homework content and generating responses
-- **EducaThor Hub**: For authentication (optional)
+-   **Gemini API**: For analyzing homework content and generating responses
+-   **EducaThor Hub**: For authentication (optional)
 
 ## API Key Setup
 

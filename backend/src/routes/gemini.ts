@@ -11,12 +11,6 @@ const API_BASE_URL = "https://generativelanguage.googleapis.com/v1";
 const MODEL_NAME = "gemini-2.0-flash";
 
 // Types
-interface GeminiRequest {
-    prompt: string;
-    pageContent?: string;
-    highlightedText?: string;
-}
-
 interface GeminiResponse {
     candidates: Array<{
         content: {
@@ -37,12 +31,6 @@ interface ChatResponse {
     }>;
 }
 
-interface AnalysisResponse {
-    questions: string[];
-    context: string;
-    screenshot?: string;
-}
-
 interface ChatRequestBody {
     prompt: string;
     pageContent?: string;
@@ -54,18 +42,89 @@ interface AnalyzeRequestBody {
     screenshot?: string;
 }
 
+// Helper functions
+function extractHints(message: string): string[] {
+    console.log("Extracting hints from message:", message);
+
+    // Look for lines starting with "Hint 1:", "Hint 2:", etc.
+    const hintRegex = /Hint\s*\d+:\s*([^\n]+)/g;
+    const hints: string[] = [];
+    let match;
+
+    while ((match = hintRegex.exec(message)) !== null) {
+        console.log("Found hint:", match[1].trim());
+        hints.push(match[1].trim());
+    }
+
+    // If no hints found with the above pattern, try alternative patterns
+    if (hints.length === 0) {
+        console.log("No hints found with primary pattern, trying alternatives");
+
+        // Try numbered list format (1. hint text)
+        const numberedHintRegex = /^\d+\.\s*([^\n]+)/gm;
+        while ((match = numberedHintRegex.exec(message)) !== null) {
+            console.log("Found numbered hint:", match[1].trim());
+            hints.push(match[1].trim());
+        }
+
+        // Try another common format: "Hint:" followed by text
+        if (hints.length === 0) {
+            const simpleHintRegex = /Hint:\s*([^\n]+)/g;
+            while ((match = simpleHintRegex.exec(message)) !== null) {
+                console.log("Found simple hint:", match[1].trim());
+                hints.push(match[1].trim());
+            }
+        }
+    }
+
+    console.log("Extracted hints:", hints);
+    return hints;
+}
+
+function extractQuestions(analysisText: string): string[] {
+    // Simple extraction - look for lines that end with question marks
+    const questionLines = analysisText
+        .split("\n")
+        .filter((line) => line.trim().endsWith("?"))
+        .map((line) => line.trim());
+
+    // If no questions found with question marks, look for numbered items
+    if (questionLines.length === 0) {
+        const numberedItems = analysisText
+            .split("\n")
+            .filter((line) => /^\d+\./.test(line.trim()))
+            .map((line) => line.trim());
+
+        return numberedItems;
+    }
+
+    return questionLines;
+}
+
+function extractContext(analysisText: string): string {
+    // Extract the context section if it exists
+    const contextMatch = analysisText.match(/context:([\s\S]*?)(?=\n\n|$)/i);
+    if (contextMatch && contextMatch[1]) {
+        return contextMatch[1].trim();
+    }
+
+    // If no specific context section, return the first paragraph
+    const paragraphs = analysisText.split("\n\n");
+    return paragraphs[0] || analysisText.substring(0, 500);
+}
+
 /**
  * @api {post} /api/gemini/chat
  * @apiDescription Send a message to Gemini API and get a response
  */
-const chatHandler: RequestHandler = async (req, res) => {
+const chatHandler: RequestHandler = async (req, res, next) => {
     try {
         const { sub } = req.user!;
         const { prompt, pageContent, highlightedText } =
             req.body as ChatRequestBody;
 
         if (!prompt || !sub) {
-            createHttpError(400, "Prompt and userId are required");
+            next(createHttpError(400, "Prompt and userId are required"));
             return;
         }
 
@@ -148,7 +207,7 @@ const chatHandler: RequestHandler = async (req, res) => {
         if (!response.ok) {
             const errorText = await response.text();
             console.error(`Gemini API error: ${response.status}`, errorText);
-            res.status(response.status).json({ error: errorText });
+            next(createHttpError(response.status, errorText));
             return;
         }
 
@@ -207,9 +266,11 @@ const chatHandler: RequestHandler = async (req, res) => {
         );
     } catch (error) {
         console.error("Error calling Gemini API:", error);
-        createHttpError(
-            500,
-            "An error occurred while processing your request. Please try again later."
+        next(
+            createHttpError(
+                500,
+                "An error occurred while processing your request. Please try again later."
+            )
         );
     }
 };
@@ -218,12 +279,12 @@ const chatHandler: RequestHandler = async (req, res) => {
  * @api {post} /api/gemini/analyze
  * @apiDescription Analyze page content using Gemini API
  */
-const analyzeHandler: RequestHandler = async (req, res) => {
+const analyzeHandler: RequestHandler = async (req, res, next) => {
     try {
         const { content, screenshot } = req.body as AnalyzeRequestBody;
 
         if (!content) {
-            res.status(400).json({ error: "Content is required" });
+            next(createHttpError(400, "Content is required"));
             return;
         }
 
@@ -329,7 +390,7 @@ const analyzeHandler: RequestHandler = async (req, res) => {
         if (!response.ok) {
             const errorText = await response.text();
             console.error(`Gemini API error: ${response.status}`, errorText);
-            res.status(response.status).json({ error: errorText });
+            next(createHttpError(response.status, errorText));
             return;
         }
 
@@ -354,83 +415,12 @@ const analyzeHandler: RequestHandler = async (req, res) => {
         });
     } catch (error) {
         console.error("Error analyzing page with Gemini:", error);
-        res.status(500).json({ error: "Internal server error" });
+        next(createHttpError(500, "Internal server error"));
     }
 };
 
 // Register routes
 geminiRouter.post("/chat", authenticateUser, chatHandler);
 geminiRouter.post("/analyze", authenticateUser, analyzeHandler);
-
-// Helper functions
-function extractHints(message: string): string[] {
-    console.log("Extracting hints from message:", message);
-
-    // Look for lines starting with "Hint 1:", "Hint 2:", etc.
-    const hintRegex = /Hint\s*\d+:\s*([^\n]+)/g;
-    const hints: string[] = [];
-    let match;
-
-    while ((match = hintRegex.exec(message)) !== null) {
-        console.log("Found hint:", match[1].trim());
-        hints.push(match[1].trim());
-    }
-
-    // If no hints found with the above pattern, try alternative patterns
-    if (hints.length === 0) {
-        console.log("No hints found with primary pattern, trying alternatives");
-
-        // Try numbered list format (1. hint text)
-        const numberedHintRegex = /^\d+\.\s*([^\n]+)/gm;
-        while ((match = numberedHintRegex.exec(message)) !== null) {
-            console.log("Found numbered hint:", match[1].trim());
-            hints.push(match[1].trim());
-        }
-
-        // Try another common format: "Hint:" followed by text
-        if (hints.length === 0) {
-            const simpleHintRegex = /Hint:\s*([^\n]+)/g;
-            while ((match = simpleHintRegex.exec(message)) !== null) {
-                console.log("Found simple hint:", match[1].trim());
-                hints.push(match[1].trim());
-            }
-        }
-    }
-
-    console.log("Extracted hints:", hints);
-    return hints;
-}
-
-function extractQuestions(analysisText: string): string[] {
-    // Simple extraction - look for lines that end with question marks
-    const questionLines = analysisText
-        .split("\n")
-        .filter((line) => line.trim().endsWith("?"))
-        .map((line) => line.trim());
-
-    // If no questions found with question marks, look for numbered items
-    if (questionLines.length === 0) {
-        const numberedItems = analysisText
-            .split("\n")
-            .filter((line) => /^\d+\./.test(line.trim()))
-            .map((line) => line.trim());
-
-        return numberedItems;
-    }
-
-    return questionLines;
-}
-
-function extractContext(analysisText: string): string {
-    // Extract the context section if it exists
-    const contextMatch = analysisText.match(/context:([\s\S]*?)(?=\n\n|$)/i);
-    if (contextMatch && contextMatch[1]) {
-        return contextMatch[1].trim();
-    }
-
-    // If no specific context section, return the first paragraph
-    const paragraphs = analysisText.split("\n\n");
-    return paragraphs[0] || analysisText.substring(0, 500);
-}
 
 export default geminiRouter;

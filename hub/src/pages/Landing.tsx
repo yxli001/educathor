@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const Landing = () => {
+    const navigate = useNavigate();
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-800 text-gray-100">
             <header className="flex flex-col items-center justify-center text-center px-4 pt-24 pb-12">
@@ -21,7 +24,12 @@ const Landing = () => {
             </header>
 
             <section className="grid gap-8 md:grid-cols-3 px-8 py-16 rounded-t-3xl">
-                <div className="bg-gray-50 p-8 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
+                <div
+                    className="bg-gray-50 p-8 rounded-2xl shadow-md hover:shadow-lg hover:bg-gray-300 transition-shadow duration-300 text-center"
+                    onClick={() => {
+                        navigate("/");
+                    }}
+                >
                     <h3 className="text-2xl font-semibold mb-4 text-gray-800">
                         TuzzAI
                     </h3>
@@ -30,7 +38,12 @@ const Landing = () => {
                         understand concepts — no spoonfeeding, just guidance.
                     </p>
                 </div>
-                <div className="bg-gray-50 p-8 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
+                <div
+                    className="bg-gray-50 p-8 rounded-2xl shadow-md hover:shadow-lg hover:bg-gray-300 transition-shadow duration-300 text-center"
+                    onClick={() => {
+                        navigate("/app/mind-mapper");
+                    }}
+                >
                     <h3 className="text-2xl font-semibold mb-4 text-gray-800">
                         MindMapper
                     </h3>
@@ -39,7 +52,12 @@ const Landing = () => {
                         chaos into clarity.
                     </p>
                 </div>
-                <div className="bg-gray-50 p-8 rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-300 text-center">
+                <div
+                    className="bg-gray-50 p-8 rounded-2xl shadow-md hover:shadow-lg hover:bg-gray-300 transition-shadow duration-300 text-center"
+                    onClick={() => {
+                        navigate("/app/cheatsheet");
+                    }}
+                >
                     <h3 className="text-2xl font-semibold mb-4 text-gray-800">
                         CheatSheet AI
                     </h3>

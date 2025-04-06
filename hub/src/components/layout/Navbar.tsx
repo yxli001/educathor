@@ -31,28 +31,37 @@ const Navbar = () => {
     }, []);
 
     return (
-        <div className="h-18 w-full bg-gray-800 text-white flex items-center justify-between px-6 shadow-md">
-            <Link
-                className="px-4 py-2 text-white font-medium rounded transition duration-200 cursor-pointer hover:underline"
-                to="/"
-            >
-                EducaThor
-            </Link>
-
-            <div className="flex space-x-4">
+        <div className="h-18 w-full text-white flex items-center justify-between px-6 shadow-lg bg-gradient-to-l from-gray-800 via-indigo-900 to-purple-900">
+            <div className="flex items-center space-x-6">
                 <Link
-                    className="px-4 py-2 text-white font-medium rounded transition duration-200 cursor-pointer hover:underline"
-                    to="mind-mapper"
+                    className="px-4 py-2 text-white font-bold text-4xl italic rounded transition duration-200 cursor-pointer hover:underline"
+                    to="/"
                 >
-                    MindMapper
+                    EducaThor
                 </Link>
 
-                <Link
-                    className="px-4 py-2 text-white font-medium rounded transition duration-200 cursor-pointer hover:underline"
-                    to="cheatsheet"
-                >
-                    Cheatsheet
-                </Link>
+                <div className="flex space-x-4">
+                    <Link
+                        className="px-4 py-2 text-white font-medium rounded transition duration-200 cursor-pointer hover:underline"
+                        to=""
+                    >
+                        Home
+                    </Link>
+
+                    <Link
+                        className="px-4 py-2 text-white font-medium rounded transition duration-200 cursor-pointer hover:underline"
+                        to="mind-mapper"
+                    >
+                        MindMapper
+                    </Link>
+
+                    <Link
+                        className="px-4 py-2 text-white font-medium rounded transition duration-200 cursor-pointer hover:underline"
+                        to="cheatsheet"
+                    >
+                        CheatSheet AI
+                    </Link>
+                </div>
             </div>
 
             <div className="relative" ref={dropdownRef}>

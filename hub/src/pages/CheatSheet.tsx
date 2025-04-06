@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 
 function CheatSheet() {
@@ -17,6 +17,8 @@ function CheatSheet() {
     const [pagesError, setPagesError] = useState("");
 
     //const [numPages, setNumPages] = useState(1);
+
+    useEffect(() => {}, [files]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFiles = Array.from(e.target.files || []);

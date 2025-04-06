@@ -2,7 +2,7 @@
 // Handles communication with the EducaThor Hub and Gemini API
 
 // Import API keys from config
-import { EDUCA_THOR_HUB_URL, EDUCA_THOR_API_URL } from "../config/keys";
+import { EDUCA_THOR_HUB_URL, EDUCA_THOR_API_URL } from "../config";
 
 // Types
 export interface AuthResponse {

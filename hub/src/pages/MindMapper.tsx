@@ -1,6 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import {
+    useState,
+    useRef,
+    useEffect,
+    useCallback,
+    MouseEvent,
+    KeyboardEvent,
+} from "react";
 import axios from "axios";
-// import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import ReactFlow, {
     Background,
@@ -10,34 +16,84 @@ import ReactFlow, {
     useNodesState,
     useEdgesState,
     ReactFlowProvider,
+    NodeProps,
+    Handle,
+    Position,
+    OnConnect,
+    addEdge,
+    Connection,
+    ReactFlowInstance,
+    EdgeMouseHandler,
+    NodeMouseHandler,
 } from "reactflow";
 import "reactflow/dist/style.css";
-// ignorethisfornow @ts-expect-error chill
-// import { saveAsPng } from "save-html-as-image";
-// import { useReactFlow } from "reactflow";
-// import { toPng } from "html-to-image";
 import { toPng } from "html-to-image";
+// import { saveAsPng } from "save-html-as-image";
 
 type MindMapNode = {
     title: string;
     ideas?: Record<string, MindMapNode>;
 };
 
+const EditableNode = ({ id, data }: NodeProps) => {
+    const [editing, setEditing] = useState(false);
+    const [value, setValue] = useState(data.label);
+
+    return (
+        <>
+            <div
+                className="bg-yellow-100 border border-gray-400 rounded p-2 text-sm text-center"
+                onDoubleClick={() => setEditing(true)}
+            >
+                {editing ? (
+                    <input
+                        className="text-sm w-full"
+                        value={value}
+                        autoFocus
+                        onBlur={() => {
+                            setEditing(false);
+                            data.onUpdate(id, value);
+                        }}
+                        onChange={(e) => setValue(e.target.value)}
+                    />
+                ) : (
+                    <span>{value}</span>
+                )}
+                <Handle type="target" position={Position.Left} />
+                <Handle type="source" position={Position.Right} />
+            </div>
+        </>
+    );
+};
+
+const nodeTypes = {
+    editable: EditableNode,
+};
+
 export default function MindMapper() {
     const [file, setFile] = useState<File | null>(null);
     const [mindMapData, setMindMapData] = useState<MindMapNode | null>(null);
+    const [summaryText, setSummaryText] = useState<string | null>(null);
     const [loadingMode, setLoadingMode] = useState<
         "mindmap" | "summary" | null
     >(null);
     const mindMapRef = useRef<HTMLDivElement>(null);
+    const reactFlowWrapper = useRef<HTMLDivElement>(null);
+    const [reactFlowInstance, setReactFlowInstance] =
+        useState<ReactFlowInstance | null>(null);
 
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+    const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
     const handleUpload = async (mode: "mindmap" | "summary") => {
         if (!file) return;
         setLoadingMode(mode);
         setMindMapData(null);
+        setSummaryText(null);
+        setNodes([]);
+        setEdges([]);
 
         const formData = new FormData();
         formData.append("image", file);
@@ -45,7 +101,7 @@ export default function MindMapper() {
 
         try {
             const response = await axios.post(
-                "http://localhost:5174/api/analyze",
+                "http://localhost:5174/api/mindmapper",
                 formData,
                 {
                     headers: { "Content-Type": "multipart/form-data" },
@@ -54,6 +110,11 @@ export default function MindMapper() {
 
             if (mode === "mindmap" && response.data?.type === "mindmap") {
                 setMindMapData(response.data.data);
+            } else if (
+                mode === "summary" &&
+                response.data?.type === "summary"
+            ) {
+                setSummaryText(response.data.data);
             }
         } catch (err) {
             console.error("Upload failed:", err);
@@ -61,6 +122,26 @@ export default function MindMapper() {
             setLoadingMode(null);
         }
     };
+
+    const handleNodeLabelUpdate = useCallback(
+        (id: string, newLabel: string) => {
+            setNodes((nds) =>
+                nds.map((node) =>
+                    node.id === id
+                        ? {
+                              ...node,
+                              data: {
+                                  ...node.data,
+                                  label: newLabel,
+                                  onUpdate: handleNodeLabelUpdate,
+                              },
+                          }
+                        : node
+                )
+            );
+        },
+        [setNodes]
+    );
 
     const convertMindMapToFlow = (root: MindMapNode) => {
         const newNodes: Node[] = [];
@@ -85,17 +166,12 @@ export default function MindMapper() {
 
             newNodes.push({
                 id,
-                data: { label: node.title },
-                position: { x, y },
-                style: {
-                    padding: 10,
-                    border: "1px solid #d1d5db",
-                    borderRadius: "0.5rem",
-                    background: "#fffbe6",
-                    color: "#111827",
-                    textAlign: "center",
-                    width: 150,
+                type: "editable",
+                data: {
+                    label: node.title,
+                    onUpdate: handleNodeLabelUpdate,
                 },
+                position: { x, y },
             });
 
             if (parentId) {
@@ -132,27 +208,26 @@ export default function MindMapper() {
             setNodes(nodes);
             setEdges(edges);
         }
-    }, [mindMapData]);
+    }, [mindMapData, handleNodeLabelUpdate]);
 
-    const downloadPDF = async () => {
+    const downloadSummaryPDF = () => {
+        if (!summaryText) return;
+        const pdf = new jsPDF();
+        const lines = pdf.splitTextToSize(summaryText, 180);
+        pdf.text(lines, 10, 10);
+        pdf.save("summary.pdf");
+    };
+
+    const downloadMindMapPDF = async () => {
         if (!mindMapRef.current) return;
 
         const container = mindMapRef.current.querySelector(".react-flow");
-
-        if (!container) {
-            console.error("React Flow container not found");
-            return;
-        }
+        if (!container) return;
 
         try {
             const dataUrl = await toPng(container as HTMLElement, {
                 backgroundColor: "#ffffff",
                 cacheBust: true,
-                filter: (node) => {
-                    // Prevent grid dots from disappearing
-                    const id = (node as HTMLElement)?.className || "";
-                    return !String(id).includes("react-flow__minimap");
-                },
             });
 
             const img = new Image();
@@ -181,9 +256,69 @@ export default function MindMapper() {
         }
     };
 
+    const onConnect: OnConnect = useCallback(
+        (connection: Connection) =>
+            setEdges((eds) =>
+                addEdge({ ...connection, type: "smoothstep" }, eds)
+            ),
+        [setEdges]
+    );
+
+    const onEdgeClick: EdgeMouseHandler = (_event, edge) => {
+        setSelectedEdge(edge.id);
+    };
+
+    const onPaneClick = (event: MouseEvent) => {
+        if (!reactFlowWrapper.current || !reactFlowInstance) return;
+
+        const bounds = reactFlowWrapper.current.getBoundingClientRect();
+        const position = reactFlowInstance.project({
+            x: event.clientX - bounds.left,
+            y: event.clientY - bounds.top,
+        });
+
+        const newNodeId = `node-${Date.now()}`;
+        const newNode: Node = {
+            id: newNodeId,
+            type: "editable",
+            data: { label: "New Node", onUpdate: handleNodeLabelUpdate },
+            position,
+        };
+
+        setNodes((nds) => [...nds, newNode]);
+
+        if (selectedNode) {
+            const newEdge: Edge = {
+                id: `${selectedNode}->${newNodeId}`,
+                source: selectedNode,
+                target: newNodeId,
+                type: "smoothstep",
+            };
+            setEdges((eds) => [...eds, newEdge]);
+        }
+    };
+
+    const onNodeClick: NodeMouseHandler = (_event, node) => {
+        setSelectedNode(node.id);
+        setSelectedEdge(null);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Delete" && selectedEdge) {
+            setEdges((eds) => eds.filter((e) => e.id !== selectedEdge));
+            setSelectedEdge(null);
+        }
+    };
+
     return (
         <ReactFlowProvider>
-            <div className="p-6 max-w-7xl mx-auto">
+            <style>{`.react-flow svg { overflow: visible; }`}</style>
+            <div
+                className="p-6 max-w-7xl mx-auto"
+                ref={reactFlowWrapper}
+                tabIndex={0}
+                onKeyDown={onKeyDown}
+            >
                 <h1 className="text-2xl font-bold mb-4">MindMapper Upload</h1>
 
                 <input
@@ -193,32 +328,40 @@ export default function MindMapper() {
                         if (e.target.files && e.target.files.length > 0) {
                             setFile(e.target.files[0]);
                             setMindMapData(null);
+                            setSummaryText(null);
+                            setSelectedNode(null);
+                            setSelectedEdge(null);
                         }
                     }}
-                    className={`px-4 py-2 rounded ${
-                        file
-                            ? "bg-blue-400 hover:bg-blue-500"
-                            : "bg-blue-200 hover:bg-blue-300"
-                    } text-black mb-6`}
+                    className="mb-4"
                 />
-                {file && (
-                    <p className="text-sm text-gray-600 mb-2">
-                        Selected: {file.name}
-                    </p>
-                )}
 
                 {file && (
-                    <div className="flex flex-col gap-2 mb-4">
-                        <button
-                            onClick={() => handleUpload("mindmap")}
-                            className="bg-blue-500 text-white px-4 py-2 rounded"
-                            disabled={loadingMode !== null}
-                        >
-                            {loadingMode === "mindmap"
-                                ? "Generating Mind Map..."
-                                : "Generate Mind Map"}
-                        </button>
-                    </div>
+                    <>
+                        <p className="text-sm text-gray-600 mb-2">
+                            Selected: {file.name}
+                        </p>
+                        <div className="flex flex-col gap-2 mb-4">
+                            <button
+                                onClick={() => handleUpload("mindmap")}
+                                className="bg-blue-500 text-white px-4 py-2 rounded"
+                                disabled={loadingMode !== null}
+                            >
+                                {loadingMode === "mindmap"
+                                    ? "Generating Mind Map..."
+                                    : "Generate Mind Map"}
+                            </button>
+                            <button
+                                onClick={() => handleUpload("summary")}
+                                className="bg-green-500 text-white px-4 py-2 rounded"
+                                disabled={loadingMode !== null}
+                            >
+                                {loadingMode === "summary"
+                                    ? "Generating Summary..."
+                                    : "Generate Summary"}
+                            </button>
+                        </div>
+                    </>
                 )}
 
                 {nodes.length > 0 && (
@@ -227,12 +370,11 @@ export default function MindMapper() {
                             ref={mindMapRef}
                             style={{
                                 width: "100%",
-                                height: "500px", // ⬅️ Smaller height for visibility
+                                height: "450px",
                                 backgroundColor: "#f9fafb",
                                 border: "1px solid #d1d5db",
                                 borderRadius: "0.5rem",
                                 marginBottom: "2rem",
-                                overflow: "hidden",
                             }}
                         >
                             <ReactFlow
@@ -240,6 +382,12 @@ export default function MindMapper() {
                                 edges={edges}
                                 onNodesChange={onNodesChange}
                                 onEdgesChange={onEdgesChange}
+                                onConnect={onConnect}
+                                onInit={setReactFlowInstance}
+                                onPaneClick={onPaneClick}
+                                onEdgeClick={onEdgeClick}
+                                onNodeClick={onNodeClick}
+                                nodeTypes={nodeTypes}
                                 fitView
                                 panOnDrag
                                 zoomOnScroll
@@ -252,13 +400,30 @@ export default function MindMapper() {
 
                         <div className="text-center mb-10">
                             <button
-                                onClick={downloadPDF}
+                                onClick={downloadMindMapPDF}
                                 className="bg-purple-600 text-white px-6 py-3 rounded shadow"
                             >
-                                Download Spiderweb Mind Map as PDF
+                                Download Mind Map as PDF
                             </button>
                         </div>
                     </>
+                )}
+
+                {summaryText && (
+                    <div className="bg-white border border-gray-300 rounded p-4 shadow mb-10 whitespace-pre-wrap">
+                        <h2 className="text-xl font-semibold mb-2">
+                            Bullet Point Summary
+                        </h2>
+                        <pre className="text-gray-800 text-sm">
+                            {summaryText}
+                        </pre>
+                        <button
+                            onClick={downloadSummaryPDF}
+                            className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded"
+                        >
+                            Download Summary as PDF
+                        </button>
+                    </div>
                 )}
             </div>
         </ReactFlowProvider>

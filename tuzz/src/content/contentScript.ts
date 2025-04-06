@@ -1,6 +1,6 @@
 // src/content/contentScript.ts
 
-import { EDUCA_THOR_HUB_URL } from "../config/keys";
+import { EDUCA_THOR_HUB_URL } from "../config";
 
 // Function to extract text content from the page
 function extractPageContent(): string {
