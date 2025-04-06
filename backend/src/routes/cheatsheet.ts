@@ -12,6 +12,8 @@ import upload from "@/middlewares/upload";
 import path from "path";
 import latex from "node-latex";
 
+const latex2pdf = require("latex2pdf");
+
 const cheatSheetRouter = Router();
 
 const GEMINI_API_KEY = env.GEMINI_API_KEY;
@@ -157,7 +159,11 @@ const generatePdfFromLatexWithExec = async (
     return pdfBuffer;
 };  */
 
-const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
+/*
+const generatePdfFromLatexUsingLib = async (
+    latexCode: string,
+    fileName: string
+) => {
     // THIS ONE IS BETTER, LEAVES NO TRACE AND WORKS ON ALL DEVICES
     return new Promise((resolve, reject) => {
         const pdfStream = latex(latexCode);
@@ -168,6 +174,40 @@ const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
         pdfStream.on("error", reject);
         pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
     });
+};
+*/
+
+interface ConvertOptions {
+    output?: string;
+    timeout?: number;
+    debug?: boolean;
+}
+const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
+    const tempDir = path.join(__dirname, "/../../tmp");
+    const texFile = path.join(tempDir, `${fileName}.tex`);
+    const pdfFile = path.join(tempDir, `${fileName}.pdf`);
+
+    await latex2pdf.convert(
+        texFile,
+        {
+            output: pdfFile,
+            timeout: 2000,
+            debug: false,
+        } as ConvertOptions,
+        (err: Error | null) => {
+            if (err) {
+                console.error(err);
+            }
+            console.log("Done !");
+        }
+    );
+
+    const pdfBuffer = await fsx.readFile(pdfFile);
+    await fsx.remove(texFile);
+    await fsx.remove(pdfFile);
+    //await fsx.remove(path.join(tempDir, `${fileName}.aux`));
+    //await fsx.remove(path.join(tempDir, `${fileName}.log`));
+    return pdfBuffer;
 };
 
 cheatSheetRouter.post(
