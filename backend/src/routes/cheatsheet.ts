@@ -32,6 +32,36 @@ const extractDocxText = async (docPath: string): Promise<string> => {
     const result = await mammoth.extractRawText({ buffer: data });
     return result.value;
 };
+function wrapExponentsOutsideMathMode(input: string): string {
+    let result = "";
+    let inMath = false;
+    let i = 0;
+
+    while (i < input.length) {
+        if (input[i] === "$") {
+            inMath = !inMath;
+            result += "$";
+            i++;
+            continue;
+        }
+
+        if (!inMath) {
+            // Try to match something like: a^10
+            const match = input.slice(i).match(/^([a-zA-Z])\^(\d+)/);
+            if (match) {
+                const [fullMatch, base, exponent] = match;
+                result += `$${base}^${exponent}$`;
+                i += fullMatch.length;
+                continue;
+            }
+        }
+
+        result += input[i];
+        i++;
+    }
+
+    return result;
+}
 const queryGeminiLatex = async (text: string): Promise<string> => {
     const prompt =
         "Create LaTeX code concisely summarizing the following information. Your raw output must be a compileable document, and you must use very small margins, line spacing, lists, and font size to cram everything into 1 page. Do not use math mode unless for equations: \n";
@@ -52,7 +82,7 @@ const refineLatex = async (
     columns: number,
     pages: number
 ): Promise<string> => {
-    const prompt = `Format this LaTeX code to have ${columns} column(s) and ensure that margins, line spacing, and font size is small so that it fits in ${pages} page(s): \n`;
+    const prompt = `Format this LaTeX code to have ${columns} column(s) and ensure that margins, line spacing, and font size is small so that it fits in ${pages} page(s). Also ensure that all math control sequences are properly closed: \n`;
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.0-flash",
@@ -72,15 +102,19 @@ const refineLatex = async (
 
         latexCode = latexCode.replace(/(?<=\s)&(?=\s)/g, "\\&"); // turns & into \&
 
+        latexCode = latexCode.replace(/\0/g, ""); // removes all null terminators
+
         const packages = [
             "\\usepackage{amsmath}",
             "\\usepackage{amsfonts}",
             "\\usepackage{enumitem}",
+            "\\usepackage{amssymb}",
         ];
         let lines = latexCode.split("\n"); // add packages it may have forgotten
         lines.splice(1, 0, ...packages);
         latexCode = lines.join("\n");
 
+        latexCode = wrapExponentsOutsideMathMode(latexCode); // deal with exponents outside of math mode
         return latexCode;
     } catch (error) {
         console.error("Error calling Gemini AI:", error);
@@ -175,6 +209,12 @@ cheatSheetRouter.post(
             console.log("generated latex");
             const latexRefined = await refineLatex(latex, columns, pages);
             console.log("refined latex");
+
+            const tempDir = path.join(__dirname, "/../../tmp");
+            const texFile = path.join(tempDir, `temp.tex`);
+            await fsx.ensureDir(tempDir);
+            await fsx.writeFile(texFile, latexRefined);
+
             const pdfBuffer = await generatePdfFromLatex(
                 latexRefined,
                 `cheatsheet_${Date.now()}`
