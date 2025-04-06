@@ -44,6 +44,7 @@ const Popup: React.FC = () => {
   const [hints, setHints] = useState<Hint[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   // Check authentication status on mount
   useEffect(() => {
@@ -54,15 +55,36 @@ const Popup: React.FC = () => {
     getHighlightedText();
 
     // Prevent the popup from closing when clicking outside
-    document.addEventListener("click", (e) => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // This prevents the default behavior of closing the popup
+      e.preventDefault();
       e.stopPropagation();
-    });
+    };
 
-    // Clean up event listener
-    return () => {
-      document.removeEventListener("click", (e) => {
+    // Add event listener to the window object
+    window.addEventListener("click", handleClickOutside, true);
+
+    // Also prevent the default behavior of the popup window
+    window.addEventListener(
+      "blur",
+      (e) => {
+        e.preventDefault();
         e.stopPropagation();
-      });
+      },
+      true
+    );
+
+    // Clean up event listeners
+    return () => {
+      window.removeEventListener("click", handleClickOutside, true);
+      window.removeEventListener(
+        "blur",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        },
+        true
+      );
     };
   }, []);
 
@@ -96,8 +118,11 @@ const Popup: React.FC = () => {
 
   // Handle closing the popup
   const handleClosePopup = () => {
+    console.log("Close button clicked");
     // Close the popup by sending a message to the background script
-    chrome.runtime.sendMessage({ type: "CLOSE_POPUP" });
+    chrome.runtime.sendMessage({ type: "CLOSE_POPUP" }, (response) => {
+      console.log("Close popup response:", response);
+    });
   };
 
   // Capture page content
@@ -243,8 +268,15 @@ const Popup: React.FC = () => {
     }
   };
 
+  // Handle send button click
+  const handleSendButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleSendMessage();
+  };
+
   return (
-    <div className="popup-container">
+    <div className="popup-container" ref={popupRef}>
       <button className="close-button" onClick={handleClosePopup}>
         ×
       </button>
@@ -309,7 +341,7 @@ const Popup: React.FC = () => {
               disabled={isLoading}
             />
             <button
-              onClick={handleSendMessage}
+              onClick={handleSendButtonClick}
               disabled={isLoading || !inputValue.trim()}
             >
               {isLoading ? "Sending..." : "Send"}

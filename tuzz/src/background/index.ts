@@ -14,6 +14,8 @@ let popupWindowId: number | null = null;
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("Background script received message:", message);
+
   // Handle page analysis data from content script
   if (message.type === "PAGE_ANALYZED") {
     latestPageData = message.data;
@@ -86,15 +88,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Handle close popup request
   if (message.type === "CLOSE_POPUP") {
+    console.log("Received CLOSE_POPUP message");
+
     // Get the current window
     chrome.windows.getCurrent((window) => {
-      if (window.id !== undefined) {
+      console.log("Current window:", window);
+      if (window && window.id !== undefined) {
         // Close the popup window
-        chrome.windows.remove(window.id);
+        chrome.windows.remove(window.id, () => {
+          console.log("Window closed successfully");
+          sendResponse({ success: true });
+        });
+      } else {
+        console.log("No window ID found");
+        sendResponse({ success: false, error: "No window ID found" });
       }
     });
 
-    sendResponse({ success: true });
+    return true; // Indicates we'll send a response asynchronously
   }
 });
 
@@ -120,6 +131,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Listen for extension icon click
 chrome.action.onClicked.addListener(() => {
+  console.log("Extension icon clicked, creating popup window");
   // Create a popup window
   chrome.windows.create(
     {
@@ -132,9 +144,26 @@ chrome.action.onClicked.addListener(() => {
     (window) => {
       if (window && window.id !== undefined) {
         popupWindowId = window.id;
+        console.log("Popup window created with ID:", popupWindowId);
+
+        // Ensure the window stays focused
+        chrome.windows.update(popupWindowId, {
+          focused: true,
+        });
+      } else {
+        console.error("Failed to create popup window");
       }
     }
   );
+});
+
+// Listen for window focus changes
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  // If our popup window loses focus, bring it back to focus
+  if (popupWindowId !== null && windowId !== popupWindowId) {
+    console.log("Popup window lost focus, bringing it back to focus");
+    chrome.windows.update(popupWindowId, { focused: true });
+  }
 });
 
 // Initialize the background script
