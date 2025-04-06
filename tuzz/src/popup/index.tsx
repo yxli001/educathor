@@ -39,6 +39,9 @@ const Popup: React.FC = () => {
   const popupRef = useRef<HTMLDivElement>(null);
   const [isScreenshotPreviewVisible, setIsScreenshotPreviewVisible] =
     useState(false);
+  const [currentScreenshot, setCurrentScreenshot] = useState<string | null>(
+    null
+  );
 
   // Load chat history on mount
   useEffect(() => {
@@ -260,6 +263,63 @@ const Popup: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Handle screenshot capture
+  const handleScreenshot = async () => {
+    try {
+      // Request permissions first
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (!tab.id) {
+        throw new Error("No active tab found");
+      }
+
+      // Request permissions
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          return document.body.style.overflow;
+        },
+      });
+
+      // Get current window
+      const currentWindow = await chrome.windows.getCurrent();
+      if (!currentWindow.id) {
+        throw new Error("No window ID found");
+      }
+
+      // Capture the screenshot
+      const dataUrl = await chrome.tabs.captureVisibleTab(currentWindow.id, {
+        format: "png",
+      });
+
+      // Update the preview and store screenshot
+      const screenshotImg = document.getElementById(
+        "screenshotImg"
+      ) as HTMLImageElement;
+      const screenshotPreview = document.getElementById(
+        "screenshotPreview"
+      ) as HTMLDivElement;
+
+      if (screenshotImg && screenshotPreview) {
+        screenshotImg.src = dataUrl;
+        screenshotPreview.classList.add("visible");
+        setCurrentScreenshot(dataUrl);
+        setIsScreenshotPreviewVisible(true);
+      }
+    } catch (error) {
+      console.error("Error capturing screenshot:", error);
+      // Show error message to user
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        text: "Failed to capture screenshot. Please make sure you've granted the necessary permissions.",
+        sender: "bot",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
   // Handle sending a message
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -276,12 +336,23 @@ const Popup: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Send message to API
+      // Send message to API with screenshot if available
       const response = await apiService.sendChatMessage(
         userMessage.text,
         pageContent,
-        highlightedText
+        highlightedText,
+        currentScreenshot || undefined
       );
+
+      // Clear the screenshot after sending
+      setCurrentScreenshot(null);
+      const screenshotPreview = document.getElementById(
+        "screenshotPreview"
+      ) as HTMLDivElement;
+      if (screenshotPreview) {
+        screenshotPreview.classList.remove("visible");
+        setIsScreenshotPreviewVisible(false);
+      }
 
       // Add bot response
       const botMessage: Message = {
@@ -347,82 +418,6 @@ const Popup: React.FC = () => {
     e.stopPropagation();
     handleSendMessage();
   };
-
-  // Handle screenshot capture
-  const handleScreenshot = async () => {
-    try {
-      // Get current window ID first
-      const currentWindow = await chrome.windows.getCurrent();
-      if (!currentWindow.id) return;
-
-      // Capture the screenshot
-      const dataUrl = await chrome.tabs.captureVisibleTab(currentWindow.id, {
-        format: "png",
-      });
-
-      // Update the preview
-      const screenshotImg = document.getElementById(
-        "screenshotImg"
-      ) as HTMLImageElement;
-      const screenshotPreview = document.getElementById(
-        "screenshotPreview"
-      ) as HTMLDivElement;
-
-      if (screenshotImg && screenshotPreview) {
-        screenshotImg.src = dataUrl;
-        screenshotPreview.classList.add("visible");
-        setIsScreenshotPreviewVisible(true);
-      }
-    } catch (error) {
-      console.error("Error capturing screenshot:", error);
-    }
-  };
-
-  // Handle screenshot confirmation
-  const handleConfirmScreenshot = () => {
-    const screenshotImg = document.getElementById(
-      "screenshotImg"
-    ) as HTMLImageElement;
-    if (screenshotImg && screenshotImg.src) {
-      // Here you can add code to handle the confirmed screenshot
-      // For example, send it to your server or save it
-      console.log("Screenshot confirmed:", screenshotImg.src);
-    }
-    hideScreenshotPreview();
-  };
-
-  // Handle screenshot cancellation
-  const handleCancelScreenshot = () => {
-    hideScreenshotPreview();
-  };
-
-  // Helper to hide screenshot preview
-  const hideScreenshotPreview = () => {
-    const screenshotPreview = document.getElementById(
-      "screenshotPreview"
-    ) as HTMLDivElement;
-    if (screenshotPreview) {
-      screenshotPreview.classList.remove("visible");
-      setIsScreenshotPreviewVisible(false);
-    }
-  };
-
-  // Add event listeners for screenshot buttons
-  useEffect(() => {
-    const captureBtn = document.getElementById("captureBtn");
-    const confirmBtn = document.getElementById("confirmScreenshot");
-    const cancelBtn = document.getElementById("cancelScreenshot");
-
-    captureBtn?.addEventListener("click", handleScreenshot);
-    confirmBtn?.addEventListener("click", handleConfirmScreenshot);
-    cancelBtn?.addEventListener("click", handleCancelScreenshot);
-
-    return () => {
-      captureBtn?.removeEventListener("click", handleScreenshot);
-      confirmBtn?.removeEventListener("click", handleConfirmScreenshot);
-      cancelBtn?.removeEventListener("click", handleCancelScreenshot);
-    };
-  }, []);
 
   // Render authentication required message
   if (REQUIRE_AUTH && !isAuthenticated) {
@@ -550,17 +545,9 @@ const Popup: React.FC = () => {
         </button>
       </div>
 
-      {/* Screenshot preview section */}
+      {/* Screenshot preview section - removed buttons */}
       <div className="screenshot-preview" id="screenshotPreview">
         <img id="screenshotImg" alt="Screenshot preview" />
-        <div className="preview-actions">
-          <button className="cancel-btn" id="cancelScreenshot">
-            Cancel
-          </button>
-          <button className="confirm-btn" id="confirmScreenshot">
-            Confirm
-          </button>
-        </div>
       </div>
     </div>
   );

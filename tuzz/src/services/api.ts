@@ -21,21 +21,8 @@ export interface AnalysisResponse {
 }
 
 export interface ChatResponse {
-  candidates: {
-    content: {
-      parts: { text: string }[];
-    };
-  }[];
-}
-
-export interface GeminiResponse {
-  candidates: Array<{
-    content: {
-      parts: Array<{
-        text: string;
-      }>;
-    };
-  }>;
+  message: string;
+  hints?: string[];
 }
 
 export interface ChatHistoryItem {
@@ -164,28 +151,44 @@ export class ApiService {
     }
   }
 
-  // Send chat message using Gemini API
+  // Send chat message using backend API
   public async sendChatMessage(
     message: string,
     pageContent?: string,
-    highlightedText?: string
-  ): Promise<{ message: string; hints?: string[] }> {
+    highlightedText?: string,
+    screenshot?: string
+  ): Promise<ChatResponse> {
     try {
       console.log("Sending chat message to backend:", message);
 
+      // Get user ID from token
+      const token = this.getToken();
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      // Decode the JWT to get user ID
+      const tokenParts = token.split(".");
+      const payload = JSON.parse(atob(tokenParts[1]));
+      const userId = payload.sub;
+
       // Prepare the request body
       const requestBody = {
-        prompt: message,
+        prompt: message, // The backend expects 'prompt' instead of 'message'
+        userId: userId,
         pageContent,
         highlightedText,
+        screenshot,
       };
+
+      console.log("Request body:", requestBody);
 
       // Make the API request to the backend
       const response = await fetch(`${EDUCA_THOR_API_URL}/api/gemini/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.token}`, // Include token for authentication
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(requestBody),
       });
