@@ -192,15 +192,6 @@ const Popup: React.FC = () => {
     }, 60000); // 1 minute timeout
   };
 
-  // Handle closing the popup
-  const handleClosePopup = () => {
-    console.log("Close button clicked");
-    // Close the popup by sending a message to the background script
-    chrome.runtime.sendMessage({ type: "CLOSE_POPUP" }, (response) => {
-      console.log("Close popup response:", response);
-    });
-  };
-
   // Capture page content
   const capturePageContent = async () => {
     try {
@@ -454,9 +445,6 @@ const Popup: React.FC = () => {
             onClick={handleScreenshot}
           >
             📸
-          </button>
-          <button className="close-button" onClick={handleClosePopup}>
-            ×
           </button>
         </div>
       </div>

@@ -73,26 +73,6 @@ body {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Close button */
-.close-button {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  width: 32px;
-  height: 32px;
-  transition: background-color 0.3s;
-}
-
-.close-button:hover {
-  background-color: #d32f2f;
-}
-
 /* Auth container styles */
 .auth-container {
   display: flex;
@@ -426,4 +406,22 @@ body {
 
 .preview-actions button:hover {
   opacity: 0.9;
+}
+
+.screenshot-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Screenshot Modal */
+.screenshot-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
