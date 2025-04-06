@@ -1,7 +1,6 @@
 // src/content/contentScript.ts
 
-// Content script for TuzzAI extension
-// This script runs on the page and extracts content for analysis
+import { EDUCA_THOR_HUB_URL } from "../config/keys";
 
 // Function to extract text content from the page
 function extractPageContent(): string {
@@ -75,10 +74,49 @@ async function captureScreenshot(): Promise<string> {
     });
 }
 
-// Initialize the content script
-function initialize() {
-    // Extract page content
+async function analyzePageContent(pageContent: string, screenshot: string) {
+    try {
+        console.log("Sending page content to backend for analysis");
+
+        const response = await fetch(
+            `${EDUCA_THOR_HUB_URL}/api/gemini/analyze`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem(
+                        "educathor-token"
+                    )}`, // Use stored token
+                },
+                body: JSON.stringify({
+                    content: pageContent,
+                    screenshot,
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Backend analysis error:", errorText);
+            return;
+        }
+
+        const data = await response.json();
+        console.log("Backend analysis response:", data);
+
+        // Handle the analyzed data (e.g., display questions or context)
+    } catch (error) {
+        console.error("Error analyzing page content:", error);
+    }
+}
+
+// Modify the initialization function to call the backend analysis endpoint
+async function initialize() {
     const pageContent = extractPageContent();
+    const screenshot = await captureScreenshot();
+
+    // Send the extracted content and screenshot to the backend
+    await analyzePageContent(pageContent, screenshot);
 
     // Identify homework questions
     const questions = identifyHomeworkQuestions();

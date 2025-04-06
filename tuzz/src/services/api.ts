@@ -2,19 +2,7 @@
 // Handles communication with the EducaThor Hub and Gemini API
 
 // Import API keys from config
-import { GEMINI_API_KEY, EDUCA_THOR_HUB_URL } from "../config/keys";
-
-// Constants
-const API_BASE_URL = "https://generativelanguage.googleapis.com/v1";
-const MODEL_NAME = "gemini-2.0-flash";
-const API_ENDPOINTS = {
-    AUTH: `${EDUCA_THOR_HUB_URL}/auth`,
-    ANALYZE: `${EDUCA_THOR_HUB_URL}/api/analyze`,
-    CHAT: `${EDUCA_THOR_HUB_URL}/api/chat`,
-};
-
-// Set this to true to enable authentication
-const REQUIRE_AUTH = true;
+import { EDUCA_THOR_HUB_URL, EDUCA_THOR_API_URL } from "../config/keys";
 
 // Types
 export interface AuthResponse {
@@ -50,6 +38,12 @@ export interface GeminiResponse {
     }>;
 }
 
+export interface ChatHistoryItem {
+    message: string;
+    sender: "user" | "bot";
+    timestamp: string;
+}
+
 // API Service
 export class ApiService {
     private token: string | null = null;
@@ -57,6 +51,7 @@ export class ApiService {
 
     constructor() {
         this.loadToken();
+        this.loadChatHistory();
     }
 
     // Load token from storage
@@ -75,6 +70,19 @@ export class ApiService {
                 console.log("No token found in storage");
             }
         });
+    }
+
+    // Load chat history on initialization
+    private async loadChatHistory(): Promise<void> {
+        if (this.token) {
+            try {
+                const history = await this.fetchChatHistory();
+                console.log("Loaded chat history:", history);
+                // Handle the chat history (e.g., store it in a state management system)
+            } catch (error) {
+                console.error("Failed to load chat history:", error);
+            }
+        }
     }
 
     // Check if user is authenticated
@@ -110,72 +118,53 @@ export class ApiService {
         return this.token;
     }
 
-    // Analyze page content using Gemini API
+    // Analyze page content using backend API
     public async analyzePage(
         content: string,
         screenshot: string
     ): Promise<AnalysisResponse> {
         try {
-            // Prepare the prompt for Gemini
-            const prompt = `
-        Analyze the following homework content and identify:
-        1. The main questions or problems
-        2. The key concepts being tested
-        3. Any relevant context that would help explain the material
-        
-        Content: ${content.substring(0, 3000)} // Limit content length
-      `;
+            console.log("Sending page content to backend for analysis");
 
-            // Call Gemini API
+            // Prepare the request body
+            const requestBody = {
+                content,
+                screenshot,
+            };
+
+            // Make the API request to the backend
             const response = await fetch(
-                `${API_BASE_URL}/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`,
+                `${EDUCA_THOR_API_URL}/api/gemini/analyze`,
                 {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
+                        Authorization: `Bearer ${this.token}`, // Include token for authentication
                     },
-                    body: JSON.stringify({
-                        contents: [
-                            {
-                                parts: [
-                                    {
-                                        text: prompt,
-                                    },
-                                ],
-                            },
-                        ],
-                    }),
+                    body: JSON.stringify(requestBody),
                 }
             );
 
+            // Check if the response is successful
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error(
-                    `Gemini API error: ${response.status}`,
-                    errorText
-                );
+                const errorData = await response.json();
+                console.error("Backend API error:", errorData);
                 throw new Error(
-                    `Gemini API error: ${response.status} - ${errorText}`
+                    `API request failed with status ${response.status}`
                 );
             }
 
-            const geminiResponse: GeminiResponse = await response.json();
-
-            // Extract the text from the response
-            const analysisText =
-                geminiResponse.candidates[0]?.content.parts[0]?.text || "";
-
-            // Parse the response to extract questions and context
-            const questions = this.extractQuestions(analysisText);
-            const context = this.extractContext(analysisText);
+            // Parse the response
+            const data = await response.json();
+            console.log("Backend API response:", data);
 
             return {
-                questions,
-                context,
-                screenshot,
+                questions: data.questions,
+                context: data.context,
+                screenshot: data.screenshot,
             };
         } catch (error) {
-            console.error("Error analyzing page with Gemini:", error);
+            console.error("Error analyzing page content:", error);
             throw error;
         }
     }
@@ -187,81 +176,23 @@ export class ApiService {
         highlightedText?: string
     ): Promise<{ message: string; hints?: string[] }> {
         try {
-            console.log("Sending chat message to Gemini API:", message);
-
-            // Prepare the prompt with context
-            let prompt = `You are TuzzAI, a helpful homework assistant. The user is asking: "${message}"`;
-
-            // Add page content if available
-            if (pageContent) {
-                prompt += `\n\nContext from the current page: ${pageContent.substring(
-                    0,
-                    1000
-                )}...`;
-            }
-
-            // Add highlighted text if available
-            if (highlightedText) {
-                prompt += `\n\nHighlighted text from the user: "${highlightedText}"`;
-            }
-
-            // Add instructions for the AI
-            prompt += `\n\nPlease provide a CONCISE and helpful response with the following guidelines:
-      1. Keep your response brief and to the point (max 3-4 sentences)
-      2. Focus on explaining concepts rather than giving direct answers
-      3. If the user has highlighted text, focus on that specific question
-      4. If the user mentions a specific question number, prioritize that
-      5. Format your response with proper Markdown (use **bold** for emphasis)
-      6. End with 2-3 numbered hints that guide the user toward the answer without giving it directly
-      
-      Format your hints EXACTLY as follows:
-      Hint 1: [First hint]
-      Hint 2: [Second hint]
-      Hint 3: [Third hint if applicable]
-      
-      IMPORTANT: Make sure each hint starts with "Hint" followed by a number and a colon.`;
+            console.log("Sending chat message to backend:", message);
 
             // Prepare the request body
             const requestBody = {
-                contents: [
-                    {
-                        role: "user",
-                        parts: [{ text: prompt }],
-                    },
-                ],
-                generationConfig: {
-                    temperature: 0.7,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 512, // Reduced from 1024 to encourage shorter responses
-                },
-                safetySettings: [
-                    {
-                        category: "HARM_CATEGORY_HARASSMENT",
-                        threshold: "BLOCK_MEDIUM_AND_ABOVE",
-                    },
-                    {
-                        category: "HARM_CATEGORY_HATE_SPEECH",
-                        threshold: "BLOCK_MEDIUM_AND_ABOVE",
-                    },
-                    {
-                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        threshold: "BLOCK_MEDIUM_AND_ABOVE",
-                    },
-                    {
-                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        threshold: "BLOCK_MEDIUM_AND_ABOVE",
-                    },
-                ],
+                prompt: message,
+                pageContent,
+                highlightedText,
             };
 
-            // Make the API request
+            // Make the API request to the backend
             const response = await fetch(
-                `${API_BASE_URL}/models/${MODEL_NAME}:generateContent?key=${GEMINI_API_KEY}`,
+                `${EDUCA_THOR_API_URL}/api/gemini/chat`,
                 {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
+                        Authorization: `Bearer ${this.token}`, // Include token for authentication
                     },
                     body: JSON.stringify(requestBody),
                 }
@@ -270,52 +201,19 @@ export class ApiService {
             // Check if the response is successful
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error("Gemini API error:", errorData);
+                console.error("Backend API error:", errorData);
                 throw new Error(
                     `API request failed with status ${response.status}`
                 );
             }
 
             // Parse the response
-            const data = (await response.json()) as ChatResponse;
-            console.log("Gemini API response:", data);
-
-            // Extract the message from the response
-            let messageText =
-                data.candidates[0]?.content.parts[0]?.text ||
-                "No response from AI";
-
-            // Extract hints from the message (if any)
-            const hints = this.extractHints(messageText);
-
-            // Remove hints from the main message text
-            if (hints.length > 0) {
-                console.log("Removing hints from message text");
-
-                // Remove the "Here are a few hints to help you:" line if it exists
-                messageText = messageText.replace(
-                    /Here are a few hints to help you:[\s\S]*$/,
-                    ""
-                );
-
-                // Remove any remaining hint lines
-                messageText = messageText.replace(/Hint\s*\d+:\s*[^\n]+/g, "");
-
-                // Remove any lines that start with a number followed by a period (common hint format)
-                messageText = messageText.replace(/^\d+\.\s*[^\n]+/gm, "");
-
-                // Clean up any double newlines that might be left
-                messageText = messageText.replace(/\n\s*\n\s*\n/g, "\n\n");
-
-                // Trim the message
-                messageText = messageText.trim();
-
-                console.log("Message text after removing hints:", messageText);
-            }
+            const data = await response.json();
+            console.log("Backend API response:", data);
 
             return {
-                message: messageText,
-                hints,
+                message: data.message,
+                hints: data.hints || [],
             };
         } catch (error) {
             console.error("Error sending chat message:", error);
@@ -323,81 +221,35 @@ export class ApiService {
         }
     }
 
-    // Helper method to extract questions from Gemini's analysis
-    private extractQuestions(analysisText: string): string[] {
-        // Simple extraction - look for lines that end with question marks
-        const questionLines = analysisText
-            .split("\n")
-            .filter((line) => line.trim().endsWith("?"))
-            .map((line) => line.trim());
+    // Fetch chat history from the backend
+    public async fetchChatHistory(): Promise<ChatHistoryItem[]> {
+        try {
+            console.log("Fetching chat history from backend via /api/user");
 
-        // If no questions found with question marks, look for numbered items
-        if (questionLines.length === 0) {
-            const numberedItems = analysisText
-                .split("\n")
-                .filter((line) => /^\d+\./.test(line.trim()))
-                .map((line) => line.trim());
+            const response = await fetch(`${EDUCA_THOR_API_URL}/api/user`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${this.token}`, // Include token for authentication
+                },
+            });
 
-            return numberedItems;
-        }
-
-        return questionLines;
-    }
-
-    // Helper method to extract context from Gemini's analysis
-    private extractContext(analysisText: string): string {
-        // Extract the context section if it exists
-        const contextMatch = analysisText.match(
-            /context:([\s\S]*?)(?=\n\n|$)/i
-        );
-        if (contextMatch && contextMatch[1]) {
-            return contextMatch[1].trim();
-        }
-
-        // If no specific context section, return the first paragraph
-        const paragraphs = analysisText.split("\n\n");
-        return paragraphs[0] || analysisText.substring(0, 500);
-    }
-
-    // Extract hints from the AI response
-    private extractHints(message: string): string[] {
-        console.log("Extracting hints from message:", message);
-
-        // Look for lines starting with "Hint 1:", "Hint 2:", etc.
-        const hintRegex = /Hint\s*\d+:\s*([^\n]+)/g;
-        const hints: string[] = [];
-        let match;
-
-        while ((match = hintRegex.exec(message)) !== null) {
-            console.log("Found hint:", match[1].trim());
-            hints.push(match[1].trim());
-        }
-
-        // If no hints found with the above pattern, try alternative patterns
-        if (hints.length === 0) {
-            console.log(
-                "No hints found with primary pattern, trying alternatives"
-            );
-
-            // Try numbered list format (1. hint text)
-            const numberedHintRegex = /^\d+\.\s*([^\n]+)/gm;
-            while ((match = numberedHintRegex.exec(message)) !== null) {
-                console.log("Found numbered hint:", match[1].trim());
-                hints.push(match[1].trim());
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Backend API error:", errorData);
+                throw new Error(
+                    `API request failed with status ${response.status}`
+                );
             }
 
-            // Try another common format: "Hint:" followed by text
-            if (hints.length === 0) {
-                const simpleHintRegex = /Hint:\s*([^\n]+)/g;
-                while ((match = simpleHintRegex.exec(message)) !== null) {
-                    console.log("Found simple hint:", match[1].trim());
-                    hints.push(match[1].trim());
-                }
-            }
-        }
+            const data = await response.json();
+            console.log("User data fetched:", data);
 
-        console.log("Extracted hints:", hints);
-        return hints;
+            return data.chatHistory || [];
+        } catch (error) {
+            console.error("Error fetching chat history:", error);
+            throw error;
+        }
     }
 }
 

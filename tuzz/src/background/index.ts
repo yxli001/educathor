@@ -114,20 +114,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "CLOSE_POPUP") {
         console.log("Received CLOSE_POPUP message");
 
-        // Get the current window
-        chrome.windows.getCurrent((window) => {
-            console.log("Current window:", window);
-            if (window && window.id !== undefined) {
-                // Close the popup window
-                chrome.windows.remove(window.id, () => {
-                    console.log("Window closed successfully");
-                    sendResponse({ success: true });
-                });
-            } else {
-                console.error("Failed to get current window");
-                sendResponse({ success: false });
-            }
-        });
+        // Close the popup window if its ID is stored
+        if (popupWindowId !== null) {
+            chrome.windows.remove(popupWindowId, () => {
+                console.log("Popup window closed successfully");
+                popupWindowId = null; // Reset the popupWindowId
+                sendResponse({ success: true });
+            });
+        } else {
+            console.error("No popup window ID found");
+            sendResponse({ success: false });
+        }
 
         return true; // Indicates we'll send a response asynchronously
     }

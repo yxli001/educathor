@@ -82,23 +82,34 @@ const refineLatex = async (
     columns: number,
     pages: number
 ): Promise<string> => {
-    const prompt = `Modify this LaTeX code to have ${columns} column(s) and ensure that it fits in ${pages} page(s): \n`;
+    const prompt = `Modify this LaTeX code to have ${columns} column(s) and ensure that margins, line spacing, and font size is small so that it fits in ${pages} page(s): \n`;
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.0-flash",
             contents: prompt + text,
         });
 
-        const latexCode = response
+        let latexCode = response // get rid of Gemini's comments
             .text!.split("\n")
             .filter((line) => !line.startsWith("```"))
             .join("\n");
 
-        const endString = "\\end{document}";
+        const endString = "\\end{document}"; // get rid of more of Gemini's comments
         const index = latexCode.indexOf(endString);
         if (index !== -1) {
-            return latexCode.substring(0, index + endString.length);
+            latexCode = latexCode.substring(0, index + endString.length);
         }
+
+        latexCode = latexCode.replace(/(?<=\s)&(?=\s)/g, "\\&"); // turns & into \&
+
+        const packages = [
+            "\\usepackage{amsmath}",
+            "\\usepackage{amsfonts}",
+            "\\usepackage{enumitem}",
+        ];
+        let lines = latexCode.split("\n"); // add packages it may have forgotten
+        lines.splice(1, 0, ...packages);
+        latexCode = lines.join("\n");
 
         return latexCode;
     } catch (error) {
@@ -110,13 +121,6 @@ const generatePdfFromLatex = async (latexCode: string, fileName: string) => {
     const tempDir = path.join(__dirname, "/../tmp");
     const texFile = path.join(tempDir, `${fileName}.tex`);
     const pdfFile = path.join(tempDir, `${fileName}.pdf`);
-
-    latexCode = latexCode
-        .split("\n")
-        .filter((line) => !line.startsWith("```"))
-        .join("\n");
-
-    console.log(latexCode);
 
     await fsx.ensureDir(tempDir);
     await fsx.writeFile(texFile, latexCode);
@@ -152,27 +156,42 @@ app.post(
             return;
         }
         try {
+            const columns = req.body.columns;
+            const pages = req.body.pages;
+
             // Extract text from each uploaded PDF file
             const texts: string[] = [];
             for (const file of req.files as Express.Multer.File[]) {
-                const pdfPath = path.join(
+                const filePath = path.join(
                     "__dirname/../uploads/",
                     file.filename
                 );
-                const text = await extractPdfText(pdfPath);
-
-                texts.push(text);
-                fs.unlinkSync(pdfPath); // Clean up
+                if (file.mimetype == "application/pdf") {
+                    const text = await extractPdfText(filePath);
+                    texts.push(text);
+                } else if (
+                    file.mimetype ==
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                ) {
+                    const text = await extractDocxText(filePath);
+                    texts.push(text);
+                } else if (file.mimetype.startsWith("image")) {
+                    const text = await ocrImageDocument(filePath);
+                    texts.push(text);
+                }
+                fs.unlinkSync(filePath); // Clean up
             }
             const combinedText = texts.join("\n"); // combine all text into one
 
             const latex = await queryGeminiLatex(combinedText);
             console.log("generated latex");
+            const latexRefined = await refineLatex(latex, columns, pages);
+            console.log("refined latex");
             const pdfBuffer = await generatePdfFromLatex(
-                latex,
+                latexRefined,
                 `cheatsheet_${Date.now()}`
             );
-            console.log("pdf bugger");
+            console.log("pdf created");
 
             res.setHeader("Content-Type", "application/pdf");
             res.setHeader(
@@ -189,30 +208,37 @@ app.post(
 
 // MINDMAPPER BACKEND USING OCR
 const extractTextFromImage = async (imagePath: string): Promise<string> => {
-    const result = await Tesseract.recognize(imagePath, "eng");
+    const result = await Tesseract.recognize(imagePath, "eng", {
+        logger: (m: { status: string; progress: number }) => console.log(m),
+        // bypass TS restriction
+        params: {
+            tessedit_char_whitelist:
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,-–()[]{}",
+        },
+    } as any);
     return result.data.text;
 };
 
 const queryGeminiToMindMapNodes = async (text: string): Promise<any> => {
-    const prompt = `Extract key ideas from the following text as mind map nodes in JSON using the MindMup MapJS format.
-
-Text:
-${text}
-
-Return only the JSON. Example format:
-{
-  "title": "Main Topic",
-  "ideas": {
-    "1": {
-      "title": "Subtopic 1",
-      "ideas": {
-        "1": { "title": "Detail 1" },
-        "2": { "title": "Detail 2" }
-      }
-    },
-    "2": { "title": "Subtopic 2" }
-  }
-}`;
+    const prompt = `Extract key ideas from the following text as mind map nodes in JSON using the MindMup MapJS format. If you are unsure of the main topic, set it to "Mind Mapper"
+  
+  Text:
+  ${text}
+  
+  Return only the JSON. Example format:
+  {
+    "title": "Main Topic",
+    "ideas": {
+      "1": {
+        "title": "Subtopic 1",
+        "ideas": {
+          "1": { "title": "Detail 1" },
+          "2": { "title": "Detail 2" }
+        }
+      },
+      "2": { "title": "Subtopic 2" }
+    }
+  }`;
 
     const response = await axios.post(
         GEMINI_API_URL,
@@ -229,40 +255,62 @@ Return only the JSON. Example format:
     return JSON.parse(cleanedText);
 };
 
-app.post(
-    "/api/analyze",
-    upload.single("image"),
-    async (req: Request, res: Response): Promise<void> => {
-        const mode = req.body.mode;
-        const file = req.file;
+const queryGeminiBulletSummary = async (text: string): Promise<string> => {
+    const prompt = `Summarize the following content into concise bullet points. Use clear indentation, numbering, and formatting:
+  
+  ${text}
+  
+  Return only plain text.`;
 
-        if (!file || !mode) {
-            res.status(400).send("Missing file or mode.");
+    const response = await axios.post(
+        GEMINI_API_URL,
+        {
+            contents: [{ parts: [{ text: prompt }] }],
+        },
+        {
+            headers: { "Content-Type": "application/json" },
+        }
+    );
+
+    return response.data.candidates?.[0]?.content?.parts?.[0]?.text.trim();
+};
+
+// Route
+app.post("/api/analyze", upload.single("image"), async (req, res) => {
+    const mode = req.body.mode;
+    const file = req.file;
+
+    if (!file || !mode) {
+        res.status(400).send("Missing file or mode.");
+        return;
+    }
+
+    const inputImagePath = path.join(__dirname, "../uploads", file.filename);
+
+    try {
+        const extractedText = await extractTextFromImage(inputImagePath);
+
+        if (mode === "summary") {
+            const summary = await queryGeminiBulletSummary(extractedText);
+            fs.unlinkSync(inputImagePath);
+            res.json({ type: "summary", data: summary });
             return;
         }
 
-        const inputImagePath = path.join(
-            __dirname,
-            "../uploads",
-            file.filename
-        );
-
-        try {
-            console.log("[STEP] Uploaded image path:", inputImagePath);
-            const extractedText = await extractTextFromImage(inputImagePath);
-            console.log("[STEP] Extracted text:", extractedText.slice(0, 200));
-
+        if (mode === "mindmap") {
             const mindMapJson = await queryGeminiToMindMapNodes(extractedText);
-            console.log("[STEP] Mind map JSON generated");
-
             fs.unlinkSync(inputImagePath);
             res.json({ type: "mindmap", data: mindMapJson });
-        } catch (err) {
-            console.error("Failed to generate MINDMAPPER:", err);
-            res.status(500).send("Error generating content.");
+            return;
         }
+
+        fs.unlinkSync(inputImagePath);
+        res.status(400).send("Invalid mode.");
+    } catch (err) {
+        console.error("Failed to generate content:", err);
+        res.status(500).send("Error generating content.");
     }
-);
+});
 
 app.use("/api/user", userRouter);
 app.use("/api/gemini", geminiRouter);

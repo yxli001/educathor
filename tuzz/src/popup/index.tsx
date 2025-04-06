@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
-import { apiService } from "../services/api";
+import { apiService, ChatHistoryItem } from "../services/api";
 import ReactMarkdown from "react-markdown";
 
 // Constants
@@ -26,13 +26,7 @@ interface Hint {
 const Popup: React.FC = () => {
     // State
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: "1",
-            text: "Hello! I'm TuzzAI, your homework helper. How can I assist you today?",
-            sender: "bot",
-        },
-    ]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState<string>("");
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [pageContent, setPageContent] = useState<string>("");
@@ -42,6 +36,33 @@ const Popup: React.FC = () => {
     const [currentQuestion, setCurrentQuestion] = useState<string>("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const popupRef = useRef<HTMLDivElement>(null);
+
+    // Load chat history on mount
+    useEffect(() => {
+        const loadChatHistory = async () => {
+            try {
+                const history: ChatHistoryItem[] =
+                    await apiService.fetchChatHistory();
+                const formattedMessages: Message[] = history.map((item) => ({
+                    id: `${item.timestamp}-${item.sender}`,
+                    text: item.message,
+                    sender: item.sender,
+                }));
+                setMessages(formattedMessages);
+                console.log(
+                    "Chat history loaded into messages state:",
+                    formattedMessages
+                );
+            } catch (error) {
+                console.error(
+                    "Failed to load chat history into frontend:",
+                    error
+                );
+            }
+        };
+
+        loadChatHistory();
+    }, []);
 
     // Check authentication status on mount
     useEffect(() => {
@@ -362,9 +383,6 @@ const Popup: React.FC = () => {
         <div className="popup-container" ref={popupRef}>
             <div className="header">
                 <h1>TuzzAI</h1>
-                <button className="close-button" onClick={handleClosePopup}>
-                    ×
-                </button>
             </div>
 
             <div className="chat-container">
