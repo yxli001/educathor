@@ -56,6 +56,16 @@ const Popup: React.FC = () => {
 
     // Prevent the popup from closing when clicking outside
     const handleClickOutside = (e: MouseEvent) => {
+      // Don't prevent clicks on buttons or interactive elements
+      if (
+        e.target instanceof HTMLElement &&
+        (e.target.tagName === "BUTTON" ||
+          e.target.tagName === "INPUT" ||
+          e.target.closest(".hints-container"))
+      ) {
+        return;
+      }
+
       // This prevents the default behavior of closing the popup
       e.preventDefault();
       e.stopPropagation();
@@ -246,11 +256,14 @@ const Popup: React.FC = () => {
 
   // Handle revealing a hint
   const handleRevealHint = (hintId: string) => {
-    setHints((prev) =>
-      prev.map((hint) =>
+    console.log("Revealing hint with ID:", hintId);
+    setHints((prev) => {
+      const updatedHints = prev.map((hint) =>
         hint.id === hintId ? { ...hint, isRevealed: !hint.isRevealed } : hint
-      )
-    );
+      );
+      console.log("Updated hints:", updatedHints);
+      return updatedHints;
+    });
   };
 
   // Handle input change
@@ -335,21 +348,28 @@ const Popup: React.FC = () => {
               <div className="hints-container">
                 <h4>Available Hints:</h4>
                 <div className="hints-buttons">
-                  {hints.map((hint) => (
+                  {hints.map((hint, index) => (
                     <button
                       key={hint.id}
                       className="hint-button"
-                      onClick={() => handleRevealHint(hint.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log(
+                          `Hint ${index + 1} clicked, ID: ${hint.id}`
+                        );
+                        handleRevealHint(hint.id);
+                      }}
                     >
-                      {hint.isRevealed ? "Hide Hint" : "Reveal Hint"}
+                      {hint.isRevealed ? "Hide Hint" : `Hint ${index + 1}`}
                     </button>
                   ))}
                 </div>
                 {hints.map(
-                  (hint) =>
+                  (hint, index) =>
                     hint.isRevealed && (
                       <div key={`text-${hint.id}`} className="hint-text">
-                        {hint.text}
+                        <strong>Hint {index + 1}:</strong> {hint.text}
                       </div>
                     )
                 )}

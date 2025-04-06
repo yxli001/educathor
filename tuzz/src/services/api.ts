@@ -196,10 +196,12 @@ export class ApiService {
       5. Format your response with proper Markdown (use **bold** for emphasis)
       6. End with 2-3 numbered hints that guide the user toward the answer without giving it directly
       
-      Format your hints as:
+      Format your hints EXACTLY as follows:
       Hint 1: [First hint]
       Hint 2: [Second hint]
-      Hint 3: [Third hint if applicable]`;
+      Hint 3: [Third hint if applicable]
+      
+      IMPORTANT: Make sure each hint starts with "Hint" followed by a number and a colon.`;
 
       // Prepare the request body
       const requestBody = {
@@ -267,6 +269,8 @@ export class ApiService {
 
       // Remove hints from the main message text
       if (hints.length > 0) {
+        console.log("Removing hints from message text");
+
         // Remove the "Here are a few hints to help you:" line if it exists
         messageText = messageText.replace(
           /Here are a few hints to help you:[\s\S]*$/,
@@ -276,11 +280,16 @@ export class ApiService {
         // Remove any remaining hint lines
         messageText = messageText.replace(/Hint\s*\d+:\s*[^\n]+/g, "");
 
+        // Remove any lines that start with a number followed by a period (common hint format)
+        messageText = messageText.replace(/^\d+\.\s*[^\n]+/gm, "");
+
         // Clean up any double newlines that might be left
         messageText = messageText.replace(/\n\s*\n\s*\n/g, "\n\n");
 
         // Trim the message
         messageText = messageText.trim();
+
+        console.log("Message text after removing hints:", messageText);
       }
 
       return {
@@ -329,24 +338,40 @@ export class ApiService {
 
   // Extract hints from the AI response
   private extractHints(message: string): string[] {
+    console.log("Extracting hints from message:", message);
+
     // Look for lines starting with "Hint 1:", "Hint 2:", etc.
     const hintRegex = /Hint\s*\d+:\s*([^\n]+)/g;
     const hints: string[] = [];
     let match;
 
     while ((match = hintRegex.exec(message)) !== null) {
+      console.log("Found hint:", match[1].trim());
       hints.push(match[1].trim());
     }
 
     // If no hints found with the above pattern, try alternative patterns
     if (hints.length === 0) {
+      console.log("No hints found with primary pattern, trying alternatives");
+
       // Try numbered list format (1. hint text)
       const numberedHintRegex = /^\d+\.\s*([^\n]+)/gm;
       while ((match = numberedHintRegex.exec(message)) !== null) {
+        console.log("Found numbered hint:", match[1].trim());
         hints.push(match[1].trim());
+      }
+
+      // Try another common format: "Hint:" followed by text
+      if (hints.length === 0) {
+        const simpleHintRegex = /Hint:\s*([^\n]+)/g;
+        while ((match = simpleHintRegex.exec(message)) !== null) {
+          console.log("Found simple hint:", match[1].trim());
+          hints.push(match[1].trim());
+        }
       }
     }
 
+    console.log("Extracted hints:", hints);
     return hints;
   }
 }

@@ -274,11 +274,18 @@ body {
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
   transition: background-color 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-right: 8px;
+  margin-bottom: 8px;
+  min-width: 80px;
+  text-align: center;
 }
 
 .hint-button:hover {
   background-color: #3a5ce5;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
 }
 
 .hint-text {
@@ -290,6 +297,7 @@ body {
   line-height: 1.5;
   color: #333;
   border-left: 3px solid #4a6cf7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Markdown styling */
