@@ -279,7 +279,7 @@ const Popup: React.FC = () => {
 
         // Draw and compress image
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.7)); // Use JPEG with 70% quality
+        resolve(canvas.toDataURL("image/jpeg", 0.8)); // Use JPEG with 80% quality
       };
     });
   };
