@@ -5,6 +5,7 @@ import axios from "axios";
 
 import { FileWithPosition } from "@/types/file";
 import { useAuth0 } from "@auth0/auth0-react";
+import env from "@/utils/env";
 
 type CanvasProps = {
     files: FileWithPosition[];
@@ -12,6 +13,8 @@ type CanvasProps = {
     maxZIndex: number;
     setMaxZIndex: React.Dispatch<React.SetStateAction<number>>;
 };
+
+const BACKEND_URL = env.VITE_BACKEND_URL;
 
 export const Canvas: React.FC<CanvasProps> = ({
     files,
@@ -57,7 +60,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const token = await getAccessTokenSilently();
 
                 const response = await axios.post(
-                    "http://localhost:5174/api/canvas",
+                    `${BACKEND_URL}/api/canvas`,
                     formData,
                     {
                         headers: {
@@ -113,7 +116,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const token = await getAccessTokenSilently();
 
                 await axios.delete(
-                    `http://localhost:5174/api/canvas/${selectedFileId}`,
+                    `${BACKEND_URL}/api/canvas/${selectedFileId}`,
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -144,7 +147,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 const token = await getAccessTokenSilently();
 
                 await axios.post(
-                    "http://localhost:5174/api/canvas/update-positions",
+                    "${BACKEND_URL}/api/canvas/update-positions",
                     { files: filePositions },
                     {
                         headers: {
@@ -171,15 +174,12 @@ export const Canvas: React.FC<CanvasProps> = ({
             try {
                 const token = await getAccessTokenSilently();
 
-                const response = await axios.get(
-                    "http://localhost:5174/api/canvas",
-                    {
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                        withCredentials: true,
-                    }
-                );
+                const response = await axios.get("${BACKEND_URL}/api/canvas", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    withCredentials: true,
+                });
 
                 const fetchedFiles = response.data.files.map(
                     (file: {

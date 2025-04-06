@@ -210,10 +210,11 @@ cheatSheetRouter.post(
             const latexRefined = await refineLatex(latex, columns, pages);
             console.log("refined latex");
 
+            /*
             const tempDir = path.join(__dirname, "/../../tmp");
             const texFile = path.join(tempDir, `temp.tex`);
             await fsx.ensureDir(tempDir);
-            await fsx.writeFile(texFile, latexRefined);
+            await fsx.writeFile(texFile, latexRefined);*/
 
             const pdfBuffer = await generatePdfFromLatex(
                 latexRefined,

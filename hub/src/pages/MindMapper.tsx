@@ -28,12 +28,15 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { toPng } from "html-to-image";
-// import { saveAsPng } from "save-html-as-image";
+import { MarkerType } from "reactflow";
+import env from "@/utils/env";
 
 type MindMapNode = {
     title: string;
     ideas?: Record<string, MindMapNode>;
 };
+
+const BACKEND_URL = env.VITE_BACKEND_URL;
 
 const EditableNode = ({ id, data }: NodeProps) => {
     const [editing, setEditing] = useState(false);
@@ -101,7 +104,7 @@ export default function MindMapper() {
 
         try {
             const response = await axios.post(
-                "http://localhost:5174/api/mindmapper",
+                `${BACKEND_URL}/api/mindmapper`,
                 formData,
                 {
                     headers: { "Content-Type": "multipart/form-data" },
@@ -180,6 +183,11 @@ export default function MindMapper() {
                     source: parentId,
                     target: id,
                     type: "smoothstep",
+                    markerEnd: {
+                        type: MarkerType.ArrowClosed,
+                        width: 20,
+                        height: 20,
+                    },
                 });
             }
 
@@ -319,46 +327,50 @@ export default function MindMapper() {
                 tabIndex={0}
                 onKeyDown={onKeyDown}
             >
-                <h1 className="text-2xl font-bold mb-4">MindMapper Upload</h1>
+                <h1 className="text-2xl font-bold mb-4">MindMapper</h1>
 
-                <input
-                    type="file"
-                    accept="image/png, image/jpeg"
-                    onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                            setFile(e.target.files[0]);
-                            setMindMapData(null);
-                            setSummaryText(null);
-                            setSelectedNode(null);
-                            setSelectedEdge(null);
-                        }
-                    }}
-                    className="mb-4"
-                />
+                <label className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-800 rounded-md shadow-sm hover:bg-gray-200 text-sm cursor-pointer mb-4 w-fit">
+                    <span className="mr-2">Upload PNG/JPG</span>
+                    <input
+                        type="file"
+                        accept="image/png, image/jpeg"
+                        onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                                setFile(e.target.files[0]);
+                                setMindMapData(null);
+                                setSummaryText(null);
+                                setSelectedNode(null);
+                                setSelectedEdge(null);
+                            }
+                        }}
+                        className="hidden"
+                    />
+                </label>
 
                 {file && (
                     <>
                         <p className="text-sm text-gray-600 mb-2">
                             Selected: {file.name}
                         </p>
-                        <div className="flex flex-col gap-2 mb-4">
+                        <div className="flex flex-wrap gap-2 mb-4 items-center">
                             <button
                                 onClick={() => handleUpload("mindmap")}
-                                className="bg-blue-500 text-white px-4 py-2 rounded"
+                                className="bg-gray-800 text-white text-sm px-3 py-1 rounded-md hover:bg-gray-700 transition"
                                 disabled={loadingMode !== null}
                             >
                                 {loadingMode === "mindmap"
-                                    ? "Generating Mind Map..."
-                                    : "Generate Mind Map"}
+                                    ? "Generating..."
+                                    : "Mind Map"}
                             </button>
+
                             <button
                                 onClick={() => handleUpload("summary")}
-                                className="bg-green-500 text-white px-4 py-2 rounded"
+                                className="bg-gray-600 text-white text-sm px-3 py-1 rounded-md hover:bg-gray-500 transition"
                                 disabled={loadingMode !== null}
                             >
                                 {loadingMode === "summary"
-                                    ? "Generating Summary..."
-                                    : "Generate Summary"}
+                                    ? "Generating..."
+                                    : "Summary"}
                             </button>
                         </div>
                     </>

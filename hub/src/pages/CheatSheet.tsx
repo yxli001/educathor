@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import env from "@/utils/env";
+
+const BACKEND_URL = env.VITE_BACKEND_URL;
 
 function CheatSheet() {
     const [files, setFiles] = useState<File[]>([]);
@@ -64,7 +67,7 @@ function CheatSheet() {
 
         try {
             const response = await axios.post(
-                "http://localhost:5174/api/cheatsheet",
+                `${BACKEND_URL}/api/cheatsheet`,
                 formData,
                 {
                     headers: { "Content-Type": "multipart/form-data" },
@@ -112,17 +115,16 @@ function CheatSheet() {
 
                 <p className="text-1xl font-bold">Files</p>
                 <p>Supported types: pdf, png, jpg, jpeg, docx</p>
-                <input
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.docx" // ,.txt,.md,.docx
-                    multiple
-                    onChange={handleFileChange}
-                    className={`px-4 py-2 rounded ${
-                        files.length > 0
-                            ? "bg-blue-400 hover:bg-blue-500"
-                            : "bg-blue-200 hover:bg-blue-300"
-                    } text-black mb-6`}
-                />
+                <label className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-800 rounded-md shadow-sm hover:bg-gray-200 text-sm cursor-pointer mb-4 w-fit">
+                    <span className="mr-2">Upload Documents</span>
+                    <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.docx" // ,.txt,.md,.docx
+                        multiple
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
+                </label>
 
                 <p className="text-1xl font-bold"># of columns</p>
                 <input

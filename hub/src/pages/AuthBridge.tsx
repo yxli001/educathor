@@ -27,7 +27,7 @@ const AuthBridge = () => {
 
                 setTimeout(() => {
                     window.close();
-                }, 1000);
+                }, 1500);
             } catch (err) {
                 console.error("Failed to get token:", err);
             }
