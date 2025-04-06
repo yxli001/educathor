@@ -364,43 +364,56 @@ const Popup: React.FC = () => {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputValue,
-      sender: "user",
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
     setIsLoading(true);
 
     try {
-      // Log the screenshot status and data
-      console.log("Current screenshot state:", {
-        exists: !!currentScreenshot,
-        length: currentScreenshot?.length,
-        preview: currentScreenshot
-          ? currentScreenshot.substring(0, 50) + "..."
-          : "none",
+      // Capture screenshot automatically
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
       });
 
-      // Send message to API with screenshot if available
+      if (!tab.id) {
+        throw new Error("No active tab found");
+      }
+
+      // Request permissions
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          return document.body.style.overflow;
+        },
+      });
+
+      // Get the window ID from the active tab
+      const tabWindow = await chrome.windows.get(tab.windowId);
+      if (!tabWindow.id) {
+        throw new Error("No window ID found");
+      }
+
+      // Capture and resize the screenshot
+      const dataUrl = await chrome.tabs.captureVisibleTab(tabWindow.id, {
+        format: "png",
+      });
+      const resizedDataUrl = await resizeImage(dataUrl);
+
+      // Add user message
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        text: inputValue,
+        sender: "user",
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+      setInputValue("");
+
+      // Send message to API with the automatically captured screenshot
       const response = await apiService.sendChatMessage(
         userMessage.text,
         pageContent,
         highlightedText,
-        currentScreenshot || undefined
+        resizedDataUrl
       );
-
-      // Clear the screenshot after sending
-      setCurrentScreenshot(null);
-      const screenshotPreview = document.getElementById(
-        "screenshotPreview"
-      ) as HTMLDivElement;
-      if (screenshotPreview) {
-        screenshotPreview.classList.remove("visible");
-      }
 
       // Add bot response
       const botMessage: Message = {
