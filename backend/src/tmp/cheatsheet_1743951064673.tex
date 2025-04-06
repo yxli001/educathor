@@ -1,0 +1,129 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{enumitem}
+\usepackage[margin=0.1in]{geometry}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{multicol}
+
+\renewcommand{\baselinestretch}{0.8} % Even smaller line spacing
+
+\begin{document}
+
+\fontsize{6pt}{7pt}\selectfont % Even smaller font size
+
+\begin{multicols}{3} % 3 columns
+
+\textbf{Week 10 Notes, Monday, March 10}
+
+\noindent
+Claim: An uncountable set exists. Example: $\mathcal{P}(\mathbb{N})$
+
+\noindent
+Proof: Show $|\mathbb{N}| \neq |\mathcal{P}(\mathbb{N})|$. Consider $f: \mathbb{N} \to \mathcal{P}(\mathbb{N})$. Show $f$ is not a bijection. Suffices to show $f$ not onto.  $\neg \forall B \in \mathcal{P}(\mathbb{N}) \exists a \in \mathbb{N} (f(a) = B)$. Define $D_f = \{n \in \mathbb{N} \mid n \notin f(n)\} \in \mathcal{P}(\mathbb{N})$.
+
+\noindent
+\textbf{Lemma:} $\forall a \in \mathbb{N} (f(a) \neq D_f)$.
+
+\noindent
+Proof of Lemma: By Lemma, $f$ is not onto. $D_f$ "disagrees" with each image of $f$.
+
+\noindent
+Example:
+\begin{verbatim}
+    n   f(n) = X_n   0 1 2 3 4 ... n ...
+    0   X_0        Y/N Y/N Y/N Y/N Y/N ... N/Y
+    1   X_1        Y/N Y/N Y/N Y/N Y/N ... N/Y
+    2   X_2        Y/N Y/N Y/N Y/N Y/N ... N/Y
+    ...
+\end{verbatim}
+
+\noindent
+\textbf{Countable vs. Uncountable: Sets of Numbers}
+
+\noindent
+Comparing $\mathbb{Q}$ and $\mathbb{R}$:
+
+\begin{itemize}[noitemsep,nolistsep,leftmargin=*,label=$\bullet$]
+    \item No greatest/least element in either.
+    \item $\forall x \forall y (x < y \implies \exists z (x < z < y))$ is true for both.
+    \item Both are infinite. $\mathbb{Q}$ is countably infinite, $\mathbb{R}$ is uncountable.
+\end{itemize}
+
+\noindent
+$\mathbb{Z} \subset \mathbb{Q} \subset \mathbb{R}$
+
+\noindent
+\textbf{Order Axioms:}
+\begin{itemize}[noitemsep,nolistsep,leftmargin=*,label=$\bullet$]
+    \item Reflexivity: $\forall a \in \mathbb{R} (a \le a)$
+    \item Antisymmetry: $\forall a \forall b \in \mathbb{R} ((a \le b \land b \le a) \implies (a = b))$
+    \item Transitivity: $\forall a \forall b \forall c \in \mathbb{R} ((a \le b \land b \le c) \implies (a \le c))$
+    \item Trichotomy: $\forall a \forall b \in \mathbb{R} ((a = b) \lor (b > a) \lor (a < b))$
+\end{itemize}
+
+\noindent
+\textbf{Completeness Axioms:}
+\begin{itemize}[noitemsep,nolistsep,leftmargin=*,label=$\bullet$]
+    \item Least Upper Bound: Every nonempty set of real numbers bounded above has a least upper bound.
+    \item Nested Intervals: For sequence of intervals $[a_n, b_n]$ where $a_n < a_{n+1} < b_{n+1} < b_n$, $\exists x$ such that $\forall n, a_n \le x \le b_n$.
+\end{itemize}
+
+\noindent
+Real numbers can be described by decimal expansions (potentially infinite).
+
+\noindent
+Example: $\pi \approx 3.14 \approx 3.14159265$. Rational numbers have infinite decimal expansions (may terminate). 5/16 = 0.3125 = 0.31250000...  (Dense property of $\mathbb{Q}$ and $\mathbb{R}$).
+
+\noindent
+Claim: $\mathbb{R}$ is uncountable.
+
+\noindent
+Approach 1: Show $|\mathcal{P}(\mathbb{Z}^+)| \le |\mathbb{R}|$.
+
+\noindent
+Proof: Consider $u: \mathcal{P}(\mathbb{Z}^+) \to \mathbb{R}$ given by $u(A) = 0.t_1 t_2 t_3 ...$, where $t_i = 0$ if $i \notin A$ and $t_i = 1$ if $i \in A$. Since $u$ is one-to-one, $|\mathcal{P}(\mathbb{Z}^+)| \le |\mathbb{R}|$.
+
+\noindent
+Proof $u$ is one-to-one: Let $A, B \in \mathcal{P}(\mathbb{Z}^+)$ and $A \neq B$.  WLOG, $\exists k \in \mathbb{Z}^+$ such that $k \in A$ and $k \notin B$.  The $k$th digit of $u(A)$ is 1 and the $k$th digit of $u(B)$ is 0.  Therefore, $u(A) \neq u(B)$.
+
+\noindent
+Does this result show $|\mathcal{P}(\mathbb{Z}^+)| = |\mathbb{R}|$? No (needs onto)
+
+\noindent
+Examples of $u$:
+\begin{itemize}[noitemsep,nolistsep,leftmargin=*,label=$\bullet$]
+    \item $u(\{1, 3, 6\}) = 0.101001000...$
+    \item $u(\text{positive odd integers}) = 0.1010101010...$
+    \item $u(\emptyset) = 0.000000...$
+    \item $u(\mathbb{Z}^+) = 0.111111...$
+\end{itemize}
+
+\noindent
+\textbf{Other Examples of Uncountable Sets:}
+
+\noindent
+The power set of any infinite set is uncountable: $\mathcal{P}(\mathbb{N}), \mathcal{P}(\mathbb{Z}^+), \mathcal{P}(\mathbb{Z})$ are uncountable.
+
+\noindent
+The closed interval $\{x \in \mathbb{R} \mid 0 \le x \le 1\}$, any nonempty closed interval of real numbers with unequal endpoints, and related intervals.
+
+\noindent
+$\mathbb{R}$ and the set of irrational real numbers are uncountable.  $\mathbb{R} \times \mathbb{R}$ is uncountable.
+
+\noindent
+\textbf{Aleph-Zero and Beyond}
+
+\noindent
+$|\mathbb{N}| = \aleph_0$. Since $|\mathcal{P}(\mathbb{N})|$ is uncountable, $|\mathcal{P}(\mathbb{N})| \neq \aleph_0$.
+
+\noindent
+$|\mathcal{P}(\mathbb{N})| = 2^{|\mathbb{N}|} = 2^{\aleph_0}$. $|R| = 2^{\aleph_0}$.  $2^{\aleph_0}$ is "cardinality of the continuum".
+%|R| < p(in)
+\noindent
+$f: S$ infinite sequences of $Z^+ \to 30$ onto function. (let S be an infinite sequence of It. f(s)= GneZ+ /n is in S3 therefore : 13 infinite sequences of z+312 (t(Et)->203) and P(I) -903 is uncountable so Einfinite seg, of +3 is uncountable)
+
+\end{multicols}
+
+\end{document}
