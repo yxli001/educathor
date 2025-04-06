@@ -1,8 +1,10 @@
 // API service for TuzzAI extension
 // Handles communication with the EducaThor Hub and Gemini API
 
+// Import API keys from config
+import { GEMINI_API_KEY, EDUCA_THOR_HUB_URL } from "../config/keys";
+
 // Constants
-const EDUCA_THOR_HUB_URL = "https://educathor-hub.example.com"; // Replace with actual URL
 const GEMINI_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 const API_ENDPOINTS = {
@@ -13,9 +15,6 @@ const API_ENDPOINTS = {
 
 // Set this to false to bypass authentication
 const REQUIRE_AUTH = false;
-
-// Hardcoded API key - in production, this should be protected with Node.js
-const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; // Replace with your actual API key
 
 // Types
 export interface AuthResponse {
