@@ -7,7 +7,69 @@
     <link rel="stylesheet" href="index.css" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="popup-container">
+        <div class="header">
+          <h1>TuzzAI</h1>
+          <div class="header-actions">
+            <button
+              class="camera-button"
+              id="captureBtn"
+              title="Take Screenshot"
+            >
+              📸
+            </button>
+            <button class="close-button" id="closeBtn">×</button>
+          </div>
+        </div>
+
+        <div id="authContainer" class="auth-container" style="display: none">
+          <h2>Welcome to TuzzAI</h2>
+          <p>Please authenticate to continue</p>
+          <button class="auth-button" id="authBtn">Authenticate</button>
+        </div>
+
+        <div id="apiKeyContainer" class="auth-container" style="display: none">
+          <h2>Set Gemini API Key</h2>
+          <div class="api-key-container">
+            <input
+              type="text"
+              id="apiKeyInput"
+              class="api-key-input"
+              placeholder="Enter your Gemini API Key"
+            />
+            <button class="api-key-button" id="saveApiKeyBtn">
+              Save API Key
+            </button>
+          </div>
+          <p class="api-key-help">
+            You can get your API key from the Google AI Studio
+          </p>
+        </div>
+
+        <div id="chatContainer" class="chat-container">
+          <div class="messages" id="messages"></div>
+          <div class="input-container">
+            <input
+              type="text"
+              id="messageInput"
+              placeholder="Type your message..."
+            />
+            <button id="sendBtn">Send</button>
+          </div>
+        </div>
+
+        <!-- Screenshot preview section -->
+        <div class="screenshot-preview" id="screenshotPreview">
+          <img id="screenshotImg" alt="Screenshot preview" />
+          <div class="preview-actions">
+            <button class="cancel-btn" id="cancelScreenshot">Cancel</button>
+            <button class="confirm-btn" id="confirmScreenshot">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="popup.js"></script>
   </body>
 </html>

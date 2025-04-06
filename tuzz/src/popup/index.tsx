@@ -1,3 +1,4 @@
+/// <reference types="chrome"/>
 import React, { useState, useEffect, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { apiService, ChatHistoryItem } from "../services/api";
@@ -36,6 +37,8 @@ const Popup: React.FC = () => {
   const [currentQuestion, setCurrentQuestion] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const [isScreenshotPreviewVisible, setIsScreenshotPreviewVisible] =
+    useState(false);
 
   // Load chat history on mount
   useEffect(() => {
@@ -345,6 +348,95 @@ const Popup: React.FC = () => {
     handleSendMessage();
   };
 
+  // Handle screenshot capture
+  const handleScreenshot = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (tab.id) {
+        const dataUrl = await chrome.tabs.captureVisibleTab();
+        const screenshotImg = document.getElementById(
+          "screenshotImg"
+        ) as HTMLImageElement;
+        const screenshotPreview = document.getElementById(
+          "screenshotPreview"
+        ) as HTMLDivElement;
+
+        if (screenshotImg && screenshotPreview) {
+          screenshotImg.src = dataUrl;
+          screenshotPreview.classList.add("visible");
+          setIsScreenshotPreviewVisible(true);
+        }
+      }
+    } catch (error) {
+      console.error("Error capturing screenshot:", error);
+    }
+  };
+
+  // Handle screenshot confirmation
+  const handleConfirmScreenshot = () => {
+    const screenshotImg = document.getElementById(
+      "screenshotImg"
+    ) as HTMLImageElement;
+    const screenshotPreview = document.getElementById(
+      "screenshotPreview"
+    ) as HTMLDivElement;
+
+    if (screenshotImg && screenshotPreview) {
+      // Here you can add code to handle the confirmed screenshot
+      console.log("Screenshot confirmed:", screenshotImg.src);
+      screenshotPreview.classList.remove("visible");
+      setIsScreenshotPreviewVisible(false);
+    }
+  };
+
+  // Handle screenshot cancellation
+  const handleCancelScreenshot = () => {
+    const screenshotImg = document.getElementById(
+      "screenshotImg"
+    ) as HTMLImageElement;
+    const screenshotPreview = document.getElementById(
+      "screenshotPreview"
+    ) as HTMLDivElement;
+
+    if (screenshotImg && screenshotPreview) {
+      screenshotImg.src = "";
+      screenshotPreview.classList.remove("visible");
+      setIsScreenshotPreviewVisible(false);
+    }
+  };
+
+  // Add event listeners for screenshot buttons
+  useEffect(() => {
+    const captureBtn = document.getElementById("captureBtn");
+    const confirmBtn = document.getElementById("confirmScreenshot");
+    const cancelBtn = document.getElementById("cancelScreenshot");
+
+    if (captureBtn) {
+      captureBtn.addEventListener("click", handleScreenshot);
+    }
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", handleConfirmScreenshot);
+    }
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", handleCancelScreenshot);
+    }
+
+    return () => {
+      if (captureBtn) {
+        captureBtn.removeEventListener("click", handleScreenshot);
+      }
+      if (confirmBtn) {
+        confirmBtn.removeEventListener("click", handleConfirmScreenshot);
+      }
+      if (cancelBtn) {
+        cancelBtn.removeEventListener("click", handleCancelScreenshot);
+      }
+    };
+  }, []);
+
   // Render authentication required message
   if (REQUIRE_AUTH && !isAuthenticated) {
     return (
@@ -372,6 +464,18 @@ const Popup: React.FC = () => {
     <div className="popup-container" ref={popupRef}>
       <div className="header">
         <h1>TuzzAI</h1>
+        <div className="header-actions">
+          <button
+            className="camera-button"
+            id="captureBtn"
+            title="Take Screenshot"
+          >
+            📸
+          </button>
+          <button className="close-button" onClick={handleClosePopup}>
+            ×
+          </button>
+        </div>
       </div>
 
       <div className="chat-container">
